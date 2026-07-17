@@ -444,7 +444,11 @@
       b.setAttribute('aria-pressed','true');
     });
   });
-  document.getElementById('donate').addEventListener('click', function(e){ e.preventDefault(); });
+  // Donation: set DONATE_URL to your Ko-fi / PayPal / Stripe link to make the button live (one edit).
+  var DONATE_URL = ''; // e.g. 'https://ko-fi.com/philadelphiacreativealliance'
+  var donateBtn = document.getElementById('donate');
+  if (DONATE_URL) { donateBtn.href = DONATE_URL; donateBtn.target = '_blank'; donateBtn.rel = 'noopener'; }
+  else donateBtn.addEventListener('click', function (e) { e.preventDefault(); });
 </script>
 </body>
 </html>
