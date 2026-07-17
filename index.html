@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Philadelphia Creative Alliance — visual &amp; physical artists across Greater Philadelphia</title>
+<meta name="description" content="A Greater Philadelphia alliance of visual and physical artists — painters, muralists, sculptors, ceramicists, printmakers, and performers. One wall to discover local makers, and for makers to find each other.">
+<link rel="canonical" href="https://philadelphiacreativealliance.com/">
+<meta name="theme-color" content="#E9E7E0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141019" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Philadelphia Creative Alliance">
+<meta property="og:title" content="Philadelphia Creative Alliance">
+<meta property="og:description" content="A Greater Philadelphia alliance of visual and physical artists. One wall to discover local makers, and for makers to find each other.">
+<meta property="og:url" content="https://philadelphiacreativealliance.com/">
+<meta property="og:image" content="https://philadelphiacreativealliance.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Philadelphia Creative Alliance">
+<meta name="twitter:description" content="A Greater Philadelphia alliance of visual and physical artists.">
+<meta name="twitter:image" content="https://philadelphiacreativealliance.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='16' height='16' fill='%23EC4A2C'/%3E%3Crect x='16' width='16' height='16' fill='%232F63E6'/%3E%3Crect y='16' width='16' height='16' fill='%23F2B01E'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23DB2F86'/%3E%3C/svg%3E">
+<style>
+  :root {
+    /* light is the base; dark redefines the tokens below */
+    --ground:   #E9E7E0;   /* plaster / gallery wall (chosen warm-grey, not cream) */
+    --ground-2: #F3F1EB;   /* raised surface */
+    --ink:      #17131F;   /* grout — text + borders */
+    --ink-soft: #4C4656;
+    --line:     rgba(23,19,31,.16);
+    --accent:   #D63F26;   /* vermilion, deepened for light-ground contrast */
+    --accent-ink: #FFFFFF;
+    --shadow:   0 18px 40px -24px rgba(23,19,31,.5);
+
+    /* mosaic tile hues — same in both themes, this is the artwork */
+    --t1:#EC4A2C; --t1i:#fff;   /* vermilion */
+    --t2:#2F63E6; --t2i:#fff;   /* cobalt   */
+    --t3:#F2B01E; --t3i:#241a02; /* marigold */
+    --t4:#12A17E; --t4i:#fff;   /* jade     */
+    --t5:#DB2F86; --t5i:#fff;   /* fuchsia  */
+    --t6:#7A54E0; --t6i:#fff;   /* violet   */
+
+    --serif: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono:  ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+    --wrap: 1180px;
+    --gutter: clamp(20px, 5vw, 64px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:   #141019;
+      --ground-2: #1D1826;
+      --ink:      #F3EEE7;
+      --ink-soft: #B4AAC2;
+      --line:     rgba(243,238,231,.15);
+      --accent:   #F5573B;
+      --accent-ink:#1a0a06;
+      --shadow:   0 24px 54px -28px rgba(0,0,0,.75);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#141019; --ground-2:#1D1826; --ink:#F3EEE7; --ink-soft:#B4AAC2;
+    --line:rgba(243,238,231,.15); --accent:#F5573B; --accent-ink:#1a0a06;
+    --shadow:0 24px 54px -28px rgba(0,0,0,.75);
+  }
+  :root[data-theme="light"] {
+    --ground:#E9E7E0; --ground-2:#F3F1EB; --ink:#17131F; --ink-soft:#4C4656;
+    --line:rgba(23,19,31,.16); --accent:#D63F26; --accent-ink:#fff;
+    --shadow:0 18px 40px -24px rgba(23,19,31,.5);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    transition: background .3s ease, color .3s ease;
+  }
+  .wrap { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); }
+
+  a { color: inherit; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.1rem;
+  }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 700; text-wrap: balance; line-height: 1.05; margin: 0; }
+  p { max-width: 62ch; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: .85rem var(--gutter);
+    background: color-mix(in srgb, var(--ground) 82%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: .6rem; font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; }
+  .brand .chips { display: inline-grid; grid-template-columns: repeat(2,7px); grid-auto-rows: 7px; gap: 2px; }
+  .brand .chips i { display:block; width:7px; height:7px; }
+  .brand .chips i:nth-child(1){background:var(--t1)} .brand .chips i:nth-child(2){background:var(--t2)}
+  .brand .chips i:nth-child(3){background:var(--t3)} .brand .chips i:nth-child(4){background:var(--t5)}
+  .nav { display: flex; align-items: center; gap: 1.4rem; }
+  .nav a { font-family: var(--mono); font-size: .72rem; letter-spacing:.12em; text-transform: uppercase; text-decoration: none; color: var(--ink-soft); }
+  .nav a:hover { color: var(--ink); }
+  @media (max-width: 720px){ .nav a.hide-sm{ display:none; } }
+  .btn {
+    display:inline-flex; align-items:center; gap:.5rem;
+    font-family: var(--mono); font-size:.74rem; letter-spacing:.1em; text-transform:uppercase;
+    padding:.7rem 1.15rem; border-radius: 2px; text-decoration:none;
+    border:1px solid var(--ink); background:transparent; color:var(--ink); cursor:pointer;
+    transition: transform .15s ease, background .15s ease, color .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.solid { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: clamp(3.5rem, 9vw, 7rem) 0 clamp(3rem,6vw,5rem); position: relative; overflow: hidden; }
+  .hero-grid { display:grid; grid-template-columns: 1.35fr .65fr; gap: clamp(2rem,5vw,4rem); align-items:center; }
+  @media (max-width: 860px){ .hero-grid{ grid-template-columns:1fr; } }
+  .hero h1 { font-size: clamp(2.6rem, 6.4vw, 5rem); letter-spacing: -.015em; }
+  .hero .lede { font-size: 1.16rem; color: var(--ink-soft); margin: 1.6rem 0 2.2rem; max-width: 40ch; }
+  .doors { display:flex; flex-wrap:wrap; gap:.8rem; }
+  /* decorative mosaic block in hero */
+  .hero-mosaic { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; aspect-ratio: 1/1; }
+  .hero-mosaic span { border-radius:2px; opacity:0; transform: scale(.6); animation: pop .5s cubic-bezier(.2,.8,.3,1.2) forwards; }
+  @keyframes pop { to { opacity:1; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce){ .hero-mosaic span{ opacity:1; transform:none; animation:none; } }
+
+  /* ---------- generic section ---------- */
+  main section { padding: clamp(3.5rem, 7vw, 6rem) 0; border-top: 1px solid var(--line); }
+  .sec-head { max-width: 60ch; margin-bottom: 2.6rem; }
+  .sec-head h2 { font-size: clamp(1.9rem, 4vw, 3rem); letter-spacing:-.01em; }
+  .sec-head p { color: var(--ink-soft); margin-top: 1rem; font-size: 1.08rem; }
+
+  /* ---------- the mosaic / directory ---------- */
+  .mosaic-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 12px; }
+  .tile {
+    position:relative; border-radius: 3px; padding: 1.4rem 1.3rem 1.5rem; min-height: 190px;
+    display:flex; flex-direction:column; text-decoration:none; color: var(--tile-ink, #fff);
+    background: var(--tile, var(--ground-2));
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .tile:hover { transform: translateY(-4px) rotate(-.5deg); box-shadow: var(--shadow); }
+  .tile .k { font-family: var(--mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; opacity:.85; }
+  .tile h3 { font-size: 1.5rem; margin-top:.5rem; }
+  .tile .role { margin-top:auto; font-size:.92rem; opacity:.92; }
+  .tile.t1{--tile:var(--t1);--tile-ink:var(--t1i)} .tile.t2{--tile:var(--t2);--tile-ink:var(--t2i)}
+  .tile.t3{--tile:var(--t3);--tile-ink:var(--t3i)} .tile.t4{--tile:var(--t4);--tile-ink:var(--t4i)}
+  .tile.t5{--tile:var(--t5);--tile-ink:var(--t5i)} .tile.t6{--tile:var(--t6);--tile-ink:var(--t6i)}
+  /* open invitation tiles = grout outline, no fill */
+  .tile.open {
+    background: transparent; color: var(--ink);
+    border: 1.5px dashed var(--line);
+  }
+  .tile.open .k { color: var(--accent); opacity:1; }
+  .tile.open .role { opacity:.7; }
+  .tile.open:hover { border-color: var(--accent); }
+  .tile .arrow { position:absolute; top:1.2rem; right:1.2rem; font-size:1rem; }
+
+  /* ---------- founders strip ---------- */
+  .founders { display:grid; grid-template-columns: repeat(3,1fr); gap:14px; }
+  @media (max-width:760px){ .founders{ grid-template-columns:1fr; } }
+  .studio {
+    border:1px solid var(--line); border-radius:3px; padding:1.4rem 1.4rem 1.5rem;
+    background: var(--ground-2); text-decoration:none; color:inherit;
+    display:flex; flex-direction:column; gap:.5rem; transition: border-color .15s ease, transform .15s ease;
+  }
+  .studio:hover { border-color: var(--accent); transform: translateY(-3px); }
+  .studio .k { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); }
+  .studio h3 { font-size:1.3rem; }
+  .studio .link { font-family:var(--mono); font-size:.74rem; color:var(--accent); margin-top:.4rem; }
+
+  /* ---------- join + support ---------- */
+  .split { display:grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem,4vw,3.5rem); align-items:start; }
+  @media (max-width:820px){ .split{ grid-template-columns:1fr; } }
+  form { display:flex; flex-direction:column; gap:.9rem; max-width:none; }
+  label { font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom:.35rem; }
+  input, select {
+    width:100%; padding:.8rem .9rem; font: inherit; font-size:.95rem;
+    background: var(--ground-2); color:var(--ink);
+    border:1px solid var(--line); border-radius:2px;
+  }
+  .field { }
+  .form-ok { font-family:var(--mono); font-size:.82rem; color:var(--t4); padding-top:.4rem; }
+  .support-card { border:1px solid var(--line); border-radius:3px; padding: clamp(1.6rem,4vw,2.4rem); background: var(--ground-2); }
+  .support-card h3 { font-size:1.7rem; margin-bottom:.8rem; }
+  .amount-row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1.2rem 0; }
+  .amount { font-family:var(--mono); font-size:.8rem; padding:.55rem .9rem; border:1px solid var(--line); border-radius:2px; cursor:pointer; background:transparent; color:var(--ink); }
+  .amount:hover, .amount[aria-pressed="true"]{ border-color:var(--accent); color:var(--accent); }
+  .note { font-size:.82rem; color:var(--ink-soft); font-family:var(--mono); letter-spacing:.02em; }
+
+  /* ---------- badge ---------- */
+  .badge-demo { display:flex; align-items:center; gap:.6rem; padding:.6rem .85rem; border:1px solid var(--line); border-radius:3px; background:var(--ground-2); width:max-content; text-decoration:none; color:inherit; }
+  .badge-demo .chips { display:inline-grid; grid-template-columns:repeat(3,8px); grid-auto-rows:8px; gap:2px; }
+  .badge-demo .chips i{ display:block; width:8px; height:8px; }
+  .badge-demo .chips i:nth-child(1){background:var(--t1)}.badge-demo .chips i:nth-child(2){background:var(--t3)}
+  .badge-demo .chips i:nth-child(3){background:var(--t2)}.badge-demo .chips i:nth-child(4){background:var(--t5)}
+  .badge-demo .chips i:nth-child(5){background:var(--t4)}.badge-demo .chips i:nth-child(6){background:var(--t6)}
+  .badge-demo b { font-family:var(--mono); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; }
+  pre { overflow-x:auto; background: var(--ink); color: var(--ground); padding:1rem 1.1rem; border-radius:3px; font-family:var(--mono); font-size:.78rem; line-height:1.5; margin-top:1.1rem; }
+  :root[data-theme="dark"] pre, .nope { }
+
+  /* ---------- footer ---------- */
+  footer { border-top:1px solid var(--line); padding: 3rem 0 4rem; }
+  .foot { display:flex; justify-content:space-between; gap:1.5rem; flex-wrap:wrap; align-items:flex-end; }
+  .foot .k { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
+  .foot h3 { font-size:1.5rem; }
+  .draft-tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:2px; padding:.3rem .55rem; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#top">
+    <span class="chips"><i></i><i></i><i></i><i></i></span>
+    Philadelphia&nbsp;Creative&nbsp;Alliance
+  </a>
+  <nav class="nav" aria-label="Primary">
+    <a class="hide-sm" href="#mosaic">The wall</a>
+    <a class="hide-sm" href="#why">Why</a>
+    <a href="#join">Join</a>
+    <a class="btn solid" href="#support">Support</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-h">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">Greater Philadelphia · A creative alliance</p>
+        <h1 id="hero-h">A wall big enough for the whole region's makers.</h1>
+        <p class="lede">Painters, muralists, sculptors, ceramicists, printmakers, performers — across Philadelphia and the counties around it. One alliance, so clients can find you and you can find each other.</p>
+        <div class="doors">
+          <a class="btn solid" href="#mosaic">Find an artist</a>
+          <a class="btn" href="#join">Join the alliance</a>
+        </div>
+      </div>
+      <div class="hero-mosaic" aria-hidden="true">
+        <!-- 16 tiles, staggered pop-in -->
+        <span style="background:var(--t1); animation-delay:.02s"></span>
+        <span style="background:var(--t3); animation-delay:.10s"></span>
+        <span style="background:var(--ground-2); animation-delay:.06s"></span>
+        <span style="background:var(--t2); animation-delay:.14s"></span>
+        <span style="background:var(--ground-2); animation-delay:.18s"></span>
+        <span style="background:var(--t5); animation-delay:.08s"></span>
+        <span style="background:var(--t4); animation-delay:.22s"></span>
+        <span style="background:var(--ground-2); animation-delay:.12s"></span>
+        <span style="background:var(--t6); animation-delay:.26s"></span>
+        <span style="background:var(--t2); animation-delay:.16s"></span>
+        <span style="background:var(--ground-2); animation-delay:.30s"></span>
+        <span style="background:var(--t3); animation-delay:.20s"></span>
+        <span style="background:var(--t4); animation-delay:.34s"></span>
+        <span style="background:var(--ground-2); animation-delay:.24s"></span>
+        <span style="background:var(--t1); animation-delay:.38s"></span>
+        <span style="background:var(--t5); animation-delay:.28s"></span>
+      </div>
+    </div>
+  </section>
+
+  <section id="mosaic" aria-labelledby="mosaic-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">The mosaic</p>
+        <h2 id="mosaic-h">The wall is going up.</h2>
+        <p>Every tile is a maker. We're setting the first ones now — and every discipline in the region has a place on it. See one that's yours? Claim it.</p>
+      </div>
+      <div class="mosaic-grid">
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Painters</h3><span class="role">Studio, plein-air, abstract, portrait.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Muralists &amp; street artists</h3><span class="role">Walls, paste-ups, public work.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Sculptors</h3><span class="role">Steel, stone, wood, found.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Ceramicists</h3><span class="role">Wheel, hand-built, tile, glaze.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Printmakers &amp; illustrators</h3><span class="role">Screen, letterpress, riso, ink.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Photographers</h3><span class="role">Film, digital, documentary, studio.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Acrobats &amp; performers</h3><span class="role">Circus, aerial, dance, street.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Textile &amp; fashion</h3><span class="role">Fiber, dye, garment, wearable art.</span></a>
+        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Glass &amp; makers</h3><span class="role">Blown, stained, mosaic, mixed.</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section id="why" aria-labelledby="why-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Why an alliance</p>
+        <h2 id="why-h">The talent isn't missing. The connections are.</h2>
+      </div>
+      <div class="split">
+        <p style="font-size:1.12rem;">The region is thick with makers — but they work in scattered studios, disconnected from the clients who'd hire them and from each other. Someone commissioning a mural, a sculpture for a lobby, or a live act for an opening has no single place to look. And an artist who could share a kiln, a wall, or a referral often never meets the one three neighborhoods over.</p>
+        <p style="color:var(--ink-soft)">The Alliance is the connective tissue. One wall that clients can browse by discipline, one network artists can plug into, and one shared mark each member carries back to their own site — so a visitor to any member discovers the whole scene. No gatekeeping, no cut of your work. Just easy, local, flowing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="behind" aria-labelledby="behind-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">The network behind it</p>
+        <h2 id="behind-h">Built and run by working studios.</h2>
+        <p>The Alliance is organized and hosted by a small group of regional creative studios — not a bureau, not a fee. They keep the wall up so the artists don't have to.</p>
+      </div>
+      <div class="founders">
+        <a class="studio" href="https://upwield.com" target="_blank" rel="noopener">
+          <span class="k">Design &amp; AI studio</span>
+          <h3>Upwield</h3>
+          <span>Brand, web, and lean systems — look sharp, run lean.</span>
+          <span class="link">upwield.com ↗</span>
+        </a>
+        <a class="studio" href="https://futuristamantes.com" target="_blank" rel="noopener">
+          <span class="k">Media studio</span>
+          <h3>Futuristamantes</h3>
+          <span>Cinematic films for places and the people who make them.</span>
+          <span class="link">futuristamantes.com ↗</span>
+        </a>
+        <a class="studio" href="https://iswain.dev" target="_blank" rel="noopener">
+          <span class="k">Portfolio</span>
+          <h3>The workshop</h3>
+          <span>Tools, sites, and builds behind the Alliance.</span>
+          <span class="link">iswain.dev ↗</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section id="join" aria-labelledby="join-h">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Add your tile</p>
+        <h2 id="join-h" style="font-size:clamp(1.9rem,4vw,2.8rem);">Put your work on the wall.</h2>
+        <p style="color:var(--ink-soft); margin-top:1rem;">Free to join while we're setting the first tiles. Tell us who you are and what you make — we review, then you're on the wall with a link back to your own site and a badge to carry.</p>
+      </div>
+      <form id="joinform" action="https://formspree.io/f/YOUR_FORM_ID" method="POST" novalidate>
+        <div class="field"><label for="jn">Name / studio</label><input id="jn" name="name" autocomplete="name" required></div>
+        <div class="field"><label for="je">Email</label><input id="je" type="email" name="email" autocomplete="email" required></div>
+        <div class="field"><label for="jw">Website or portfolio</label><input id="jw" name="site" placeholder="https://" autocomplete="url"></div>
+        <div class="field"><label for="jd">Discipline</label>
+          <select id="jd" name="discipline">
+            <option>Painter</option><option>Muralist / street artist</option><option>Sculptor</option>
+            <option>Ceramicist</option><option>Printmaker / illustrator</option><option>Photographer</option>
+            <option>Acrobat / performer</option><option>Textile / fashion</option><option>Glass / mixed media</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <input type="hidden" name="_subject" value="New Philadelphia Creative Alliance tile request">
+        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute; left:-9999px">
+        <button class="btn solid" type="submit">Request a tile</button>
+        <p class="form-ok" id="joinok" hidden>Thanks — your request is in. We'll be in touch to set your tile.</p>
+      </form>
+    </div>
+  </section>
+
+  <section id="support" aria-labelledby="support-h">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Keep it free</p>
+        <h2 id="support-h" style="font-size:clamp(1.9rem,4vw,2.8rem);">Chip in to keep the wall up.</h2>
+        <p style="color:var(--ink-soft); margin-top:1rem;">Membership stays free for artists. Donations cover hosting, printing the badges and stickers, and small grants back to makers. Give what a coffee's worth or more.</p>
+      </div>
+      <div class="support-card">
+        <h3>Support the Alliance</h3>
+        <p style="color:var(--ink-soft); margin:0;">One-time, no account needed.</p>
+        <div class="amount-row" role="group" aria-label="Donation amount">
+          <button class="amount" aria-pressed="false">$5</button>
+          <button class="amount" aria-pressed="true">$25</button>
+          <button class="amount" aria-pressed="false">$50</button>
+          <button class="amount" aria-pressed="false">Other</button>
+        </div>
+        <a class="btn solid" href="#" id="donate" style="width:100%; justify-content:center;">Chip in</a>
+        <p class="note" style="margin-top:1rem;">Payments not wired yet — this button points where you choose (Ko-fi, PayPal, or Stripe) once the Alliance has an account to receive them.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="badge" aria-labelledby="badge-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">The shared mark</p>
+        <h2 id="badge-h">Wear the tile on your own site.</h2>
+        <p>Every member drops this badge in their footer, linking back to the wall. That reciprocal link is what turns scattered sites into one network — and quietly lifts everyone's local search.</p>
+      </div>
+      <a class="badge-demo" href="#top">
+        <span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <b>Member · Philadelphia Creative Alliance</b>
+      </a>
+<pre aria-label="Badge embed code">&lt;a href="https://philadelphiacreativealliance.com"&gt;
+  Member · Philadelphia Creative Alliance
+&lt;/a&gt;</pre>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <p class="k">Greater Philadelphia</p>
+      <h3>Painters · sculptors · street artists · performers</h3>
+      <p class="k" style="margin-top:.8rem;">© 2026 · A regional creative alliance</p>
+    </div>
+    <span class="draft-tag">Working draft · v1</span>
+  </div>
+</footer>
+
+<script>
+  // Join form: POST to Formspree once configured; until the form id is set (or if the POST
+  // fails), fall back to a prefilled mailto so a request still reaches the inbox — no dead
+  // button pre-launch.
+  var f = document.getElementById('joinform');
+  var JOIN_EMAIL = 'contact@iswain.dev'; // TODO: swap to hello@philadelphiacreativealliance.com once that inbox exists
+  function joinDone() {
+    document.getElementById('joinok').hidden = false;
+    f.querySelector('button[type=submit]').textContent = 'Request sent';
+  }
+  function joinMailto() {
+    var d = f.elements;
+    var body = 'Name/studio: ' + d.name.value + '\nEmail: ' + d.email.value +
+               '\nSite: ' + d.site.value + '\nDiscipline: ' + d.discipline.value;
+    window.location.href = 'mailto:' + JOIN_EMAIL +
+      '?subject=' + encodeURIComponent('Alliance tile request — ' + d.name.value) +
+      '&body=' + encodeURIComponent(body);
+  }
+  if (f) f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!f.checkValidity()) { f.reportValidity(); return; }
+    if ((f.getAttribute('action') || '').indexOf('YOUR_FORM_ID') !== -1) { joinMailto(); joinDone(); return; }
+    fetch(f.getAttribute('action'), { method: 'POST', body: new FormData(f), headers: { 'Accept': 'application/json' } })
+      .then(function () { joinDone(); })
+      .catch(function () { joinMailto(); });
+  });
+  // Donation amount selector (visual only).
+  document.querySelectorAll('.amount').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.amount').forEach(function (x){ x.setAttribute('aria-pressed','false'); });
+      b.setAttribute('aria-pressed','true');
+    });
+  });
+  document.getElementById('donate').addEventListener('click', function(e){ e.preventDefault(); });
+</script>
+</body>
+</html>
