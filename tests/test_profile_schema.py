@@ -231,3 +231,15 @@ def test_unparseable_date_is_treated_as_stale(tmp_path):
 
 def test_threshold_is_ninety():
     assert STALE_AFTER_DAYS == 90
+
+
+def test_null_updated_is_treated_as_stale(tmp_path):
+    availability = {"status": "open", "openTo": ["commissions"], "updated": None}
+    profile = load_profile(write_profile(tmp_path, availability=availability))
+    assert not availability_is_current(profile, TODAY)
+
+
+def test_numeric_updated_is_treated_as_stale(tmp_path):
+    availability = {"status": "open", "openTo": ["commissions"], "updated": 20260701}
+    profile = load_profile(write_profile(tmp_path, availability=availability))
+    assert not availability_is_current(profile, TODAY)

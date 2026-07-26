@@ -225,6 +225,6 @@ STALE_AFTER_DAYS = 90
 def availability_is_current(profile: Profile, today: date) -> bool:
     try:
         updated = date.fromisoformat(profile.availability.updated)
-    except ValueError:
+    except (ValueError, TypeError):
         return False
     return (today - updated).days <= STALE_AFTER_DAYS
