@@ -9,7 +9,9 @@ from tools.profile_schema import (
     DISCIPLINE_SLUGS,
     ProfileError,
     discipline_by_slug,
+    load_all,
     load_profile,
+    slugify,
 )
 
 
@@ -132,3 +134,38 @@ def test_unknown_availability_status_is_an_error(tmp_path):
     availability = {"status": "maybe", "openTo": [], "updated": "2026-07-26"}
     with pytest.raises(ProfileError, match="status"):
         load_profile(write_profile(tmp_path, availability=availability))
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("Example Artist", "example-artist"),
+        ("  Padded  Name  ", "padded-name"),
+        ("Ampersand & Co.", "ampersand-co"),
+        ("Accented Ná", "accented-na"),
+        ("Hyphen-Already", "hyphen-already"),
+    ],
+)
+def test_slugify(name, expected):
+    assert slugify(name) == expected
+
+
+def test_load_all_fills_missing_slugs_from_the_name(tmp_path):
+    data = {**VALID}
+    del data["slug"]
+    (tmp_path / "a.json").write_text(json.dumps(data))
+    profiles = load_all(tmp_path)
+    assert profiles[0].slug == "example-artist"
+
+
+def test_load_all_is_sorted_by_name(tmp_path):
+    write_profile(tmp_path, slug="zoe", name="Zoe")
+    write_profile(tmp_path, slug="adam", name="Adam")
+    assert [p.name for p in load_all(tmp_path)] == ["Adam", "Zoe"]
+
+
+def test_slug_collision_is_an_error(tmp_path):
+    (tmp_path / "one.json").write_text(json.dumps({**VALID, "slug": "same"}))
+    (tmp_path / "two.json").write_text(json.dumps({**VALID, "slug": "same"}))
+    with pytest.raises(ProfileError, match="collision"):
+        load_all(tmp_path)

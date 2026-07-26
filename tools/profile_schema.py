@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+import re
+import unicodedata
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 
@@ -182,3 +184,27 @@ def load_profile(path: Path) -> Profile:
         joined=data.get("joined", ""),
         live=bool(data.get("live", True)),
     )
+
+
+def slugify(name: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", name)
+    ascii_only = decomposed.encode("ascii", "ignore").decode("ascii")
+    lowered = ascii_only.lower().strip()
+    hyphenated = re.sub(r"[^a-z0-9]+", "-", lowered)
+    return hyphenated.strip("-")
+
+
+def load_all(directory: Path) -> list[Profile]:
+    profiles = []
+    seen: dict[str, Path] = {}
+    for path in sorted(Path(directory).glob("*.json")):
+        profile = load_profile(path)
+        slug = profile.slug or slugify(profile.name)
+        if slug in seen:
+            raise ProfileError(
+                f"slug collision on {slug!r}: {seen[slug].name} and {path.name} — "
+                "pick a distinguishing slug by hand"
+            )
+        seen[slug] = path
+        profiles.append(replace(profile, slug=slug))
+    return sorted(profiles, key=lambda p: p.name)
