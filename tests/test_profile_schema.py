@@ -169,3 +169,19 @@ def test_slug_collision_is_an_error(tmp_path):
     (tmp_path / "two.json").write_text(json.dumps({**VALID, "slug": "same"}))
     with pytest.raises(ProfileError, match="collision"):
         load_all(tmp_path)
+
+
+def test_non_latin_name_producing_empty_slug_is_an_error(tmp_path):
+    data = {**VALID, "name": "日本語アーティスト"}
+    del data["slug"]
+    (tmp_path / "japanese.json").write_text(json.dumps(data))
+    with pytest.raises(ProfileError, match="empty slug"):
+        load_all(tmp_path)
+
+
+def test_punctuation_only_name_producing_empty_slug_is_an_error(tmp_path):
+    data = {**VALID, "name": "!!!"}
+    del data["slug"]
+    (tmp_path / "punctuation.json").write_text(json.dumps(data))
+    with pytest.raises(ProfileError, match="empty slug"):
+        load_all(tmp_path)

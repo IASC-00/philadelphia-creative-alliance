@@ -200,6 +200,10 @@ def load_all(directory: Path) -> list[Profile]:
     for path in sorted(Path(directory).glob("*.json")):
         profile = load_profile(path)
         slug = profile.slug or slugify(profile.name)
+        if not slug:
+            raise ProfileError(
+                f"{path.name}: name produces an empty slug — set one by hand"
+            )
         if slug in seen:
             raise ProfileError(
                 f"slug collision on {slug!r}: {seen[slug].name} and {path.name} — "
