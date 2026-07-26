@@ -2,3 +2,5 @@
 *_preview_*.png
 # internal, not for the public repo
 DESIGN.md
+docs/superpowers/
+.worktrees/
