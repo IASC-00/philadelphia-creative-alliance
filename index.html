@@ -34,6 +34,9 @@
     --shadow:   0 18px 40px -24px rgba(23,19,31,.5);
     --hero-art: url("img/hero-mosaic-light.webp");
     --rule-art: url("img/divider-light.webp");
+    --bar-bg:     rgba(233,231,224,.82);  /* sticky topbar wash */
+    --scrim-open: rgba(233,231,224,.77);  /* dims an unclaimed tile's texture */
+    --line-strong: rgba(23,19,31,.32);    /* dashed edge of an unclaimed tile */
 
     /* mosaic tile hues — same in both themes, this is the artwork */
     --t1:#EC4A2C; --t1i:#fff;   /* vermilion */
@@ -62,6 +65,9 @@
       --shadow:   0 24px 54px -28px rgba(0,0,0,.75);
       --hero-art: url("img/hero-mosaic-dark.webp");
       --rule-art: url("img/divider-dark.webp");
+      --bar-bg:     rgba(20,16,25,.82);
+      --scrim-open: rgba(20,16,25,.77);
+      --line-strong: rgba(243,238,231,.32);
     }
   }
   :root[data-theme="dark"] {
@@ -69,12 +75,14 @@
     --line:rgba(243,238,231,.15); --accent:#F5573B; --accent-ink:#1a0a06;
     --shadow:0 24px 54px -28px rgba(0,0,0,.75);
     --hero-art: url("img/hero-mosaic-dark.webp"); --rule-art: url("img/divider-dark.webp");
+    --bar-bg:rgba(20,16,25,.82); --scrim-open:rgba(20,16,25,.77); --line-strong:rgba(243,238,231,.32);
   }
   :root[data-theme="light"] {
     --ground:#E9E7E0; --ground-2:#F3F1EB; --ink:#17131F; --ink-soft:#4C4656;
     --line:rgba(23,19,31,.16); --accent:#D63F26; --accent-ink:#fff;
     --shadow:0 18px 40px -24px rgba(23,19,31,.5);
     --hero-art: url("img/hero-mosaic-light.webp"); --rule-art: url("img/divider-light.webp");
+    --bar-bg:rgba(233,231,224,.82); --scrim-open:rgba(233,231,224,.77); --line-strong:rgba(23,19,31,.32);
   }
 
   * { box-sizing: border-box; }
@@ -95,6 +103,8 @@
   a { color: inherit; }
   .skip { position:absolute; left:-9999px; top:0; z-index:100; background:var(--accent); color:var(--accent-ink); font-family:var(--mono); font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; padding:.6rem 1rem; border-radius:2px; text-decoration:none; }
   .skip:focus { left:12px; top:12px; }
+  .noscript-note { background:var(--accent); color:var(--accent-ink); padding:1rem var(--gutter); font-size:.92rem; }
+  .noscript-note a { color:inherit; }
   .eyebrow {
     font-family: var(--mono);
     font-size: .72rem;
@@ -111,7 +121,7 @@
     position: sticky; top: 0; z-index: 40;
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     padding: .85rem var(--gutter);
-    background: color-mix(in srgb, var(--ground) 82%, transparent);
+    background: var(--bar-bg);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
   }
@@ -140,6 +150,13 @@
   }
   .btn:hover { transform: translateY(-2px); }
   .btn.solid { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  /* An inert control has to look inert — otherwise "Chip in" reads identical to
+     a working button and clicking it appears to do nothing at all. */
+  .btn:disabled, .btn[aria-disabled="true"] {
+    background: transparent; color: var(--ink-soft); border-color: var(--line);
+    cursor: not-allowed; transform: none;
+  }
+  .btn:disabled:hover, .btn[aria-disabled="true"]:hover { transform: none; }
   .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   /* ---------- hero ---------- */
@@ -179,14 +196,18 @@
   .tile {
     position:relative; overflow:hidden; border-radius: 3px; padding: 1.4rem 1.3rem 1.5rem; min-height: 200px;
     display:flex; flex-direction:column; text-decoration:none; color:#fff;
-    background-color: var(--ground-2); background-size: cover; background-position:center;
+    /* dark floor, not --ground-2: if the WebP fails to decode (Safari <14) the
+       tile's white text would otherwise sit on a near-white surface */
+    background-color: #241C2E; background-size: cover; background-position:center;
     transition: transform .18s ease, box-shadow .18s ease;
     isolation:isolate;
   }
   /* scrim guarantees text contrast over the generated texture */
   .tile::before {
     content:""; position:absolute; inset:0; z-index:-1;
-    background: linear-gradient(165deg, rgba(12,9,16,.20) 0%, rgba(12,9,16,.62) 62%, rgba(12,9,16,.82) 100%);
+    /* Top stop was .20; white text on the marigold texture measured 3.87 there,
+       under AA. Raised until the lightest tile clears 4.5. */
+    background: linear-gradient(165deg, rgba(12,9,16,.52) 0%, rgba(12,9,16,.70) 62%, rgba(12,9,16,.86) 100%);
   }
   .tile:hover { transform: translateY(-4px) rotate(-.5deg); box-shadow: var(--shadow); }
   .tile .k { font-family: var(--mono); font-size:.66rem; letter-spacing:.16em; text-transform:uppercase; opacity:.9; }
@@ -196,8 +217,8 @@
   /* Unclaimed slot: its own texture, dimmed but still carrying its hue — the
      wall is unfinished, not blank. (Do not reach for background-blend-mode:
      luminosity here; it desaturates every slot to the same grey.) */
-  .tile.open { color: var(--ink); border:1.5px dashed color-mix(in srgb, var(--ink) 32%, transparent); }
-  .tile.open::before { background: color-mix(in srgb, var(--ground) 77%, transparent); }
+  .tile.open { color: var(--ink); border:1.5px dashed var(--line-strong); }
+  .tile.open::before { background: var(--scrim-open); }
   /* ink, not accent: vermilion-on-vermilion fails contrast on the red-hued
      slots, and this label has to hold up on all nine tints */
   .tile.open .k { color: var(--ink); opacity:.78; }
@@ -273,7 +294,9 @@
   .badge-demo .chips i:nth-child(3){background:var(--t2)}.badge-demo .chips i:nth-child(4){background:var(--t5)}
   .badge-demo .chips i:nth-child(5){background:var(--t4)}.badge-demo .chips i:nth-child(6){background:var(--t6)}
   .badge-demo b { font-family:var(--mono); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; }
-  pre { overflow-x:auto; background: var(--ink); color: var(--ground); padding:1rem 1.1rem; border-radius:3px; font-family:var(--mono); font-size:.78rem; line-height:1.5; margin-top:1.1rem; }
+  pre { overflow-x:auto; max-width:100%; background: var(--ink); color: var(--ground); padding:1rem 1.1rem; border-radius:3px; font-family:var(--mono); font-size:.78rem; line-height:1.5; margin-top:1.1rem; }
+  /* long URLs in inline code must wrap, or they push the page sideways on a phone */
+  code { font-family:var(--mono); font-size:.82em; overflow-wrap:anywhere; word-break:break-word; }
 
   /* ---------- footer ---------- */
   footer { border-top:1px solid var(--line); padding: 3rem 0 4rem; }
@@ -286,6 +309,14 @@
 <body>
 
 <a class="skip" href="#top">Skip to content</a>
+
+<noscript>
+  <div class="noscript-note">
+    <b>JavaScript is off.</b> The member wall and the join forms need it. To reach us directly,
+    email <a href="mailto:contact@iswain.dev">contact@iswain.dev</a> with who you are, what you
+    make or run, and a link to your site.
+  </div>
+</noscript>
 
 <header class="topbar">
   <a class="brand" href="#top">
@@ -311,7 +342,7 @@
         <p class="free">Artists join free. Always.</p>
         <div class="doors">
           <a class="btn solid" href="#join">Join as an organisation</a>
-          <a class="btn" href="#artists">Join as an artist</a>
+          <a class="btn" href="#join-artist">Join as an artist — free</a>
         </div>
       </div>
       <div class="hero-art" role="img" aria-label="Generated mosaic artwork: irregular coloured tesserae set in dark grout, with gaps where tiles have not yet been laid."></div>
@@ -366,10 +397,11 @@
       <div class="sec-head">
         <p class="eyebrow">Artists</p>
         <h2 id="artists-h">Artists join free. Always.</h2>
-        <p>You don't need an organisation behind you. Individual makers of every discipline are welcome on the wall, at no cost, with a link back to your own site and a badge to carry. This is the part of the Alliance that will never have a price on it.</p>
+        <p>You don't need an organisation behind you. Individual makers of every discipline are welcome on the wall, at no cost, with a link back to your own site and a badge to carry. Free is not an introductory rate — artist membership stays free.</p>
       </div>
       <div class="chipgrid" id="disciplines"></div>
       <div class="roster" id="roster"></div>
+      <p style="margin-top:2rem;"><a class="btn solid" href="#join-artist">Join as an artist — free</a></p>
     </div>
   </section>
 
@@ -433,7 +465,7 @@
         </div>
 
         <div id="panel-org" role="tabpanel" aria-labelledby="tab-org">
-          <form id="orgform" method="POST" novalidate>
+          <form id="orgform" novalidate>
             <input type="hidden" name="type" value="organisation">
             <div><label for="on">Organisation name</label><input id="on" name="organisation" autocomplete="organization" required></div>
             <div><label for="ok">Kind of organisation</label>
@@ -445,14 +477,14 @@
             <div><label for="od">What would you want from the Alliance?</label><textarea id="od" name="needs"></textarea></div>
             <input type="hidden" name="_subject" value="PCA — organisation application">
             <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-            <button class="btn solid" type="submit">Send application</button>
+            <button class="btn solid" type="submit" disabled>Send application</button>
             <p class="form-ok" id="orgok" role="status" hidden>Thanks — your application is in. We'll come back to you.</p>
             <p class="form-err" id="orgerr" role="alert" hidden></p>
           </form>
         </div>
 
         <div id="panel-artist" role="tabpanel" aria-labelledby="tab-artist" hidden>
-          <form id="artistform" method="POST" novalidate>
+          <form id="artistform" novalidate>
             <input type="hidden" name="type" value="artist">
             <div><label for="an">Name / studio</label><input id="an" name="name" autocomplete="name" required></div>
             <div><label for="ae">Email</label><input id="ae" type="email" name="email" autocomplete="email" required></div>
@@ -462,7 +494,7 @@
             </div>
             <input type="hidden" name="_subject" value="PCA — artist join request">
             <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-            <button class="btn solid" type="submit">Join free</button>
+            <button class="btn solid" type="submit" disabled>Join free</button>
             <p class="form-ok" id="artistok" role="status" hidden>Thanks — you're in the queue. We'll be in touch to set your tile.</p>
             <p class="form-err" id="artisterr" role="alert" hidden></p>
           </form>
@@ -494,7 +526,7 @@
           <button type="button" class="amount" aria-pressed="false">Other</button>
         </div>
         <a class="btn solid" href="#" id="donate" style="width:100%; justify-content:center;">Chip in</a>
-        <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first. Until then, the four routes above are live and the fastest is a referral.</p>
+        <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first, so the button below does nothing for now. For space, print or a referral, use the join form above and say which one.</p>
       </div>
     </div>
   </section>
@@ -504,15 +536,27 @@
       <div class="sec-head">
         <p class="eyebrow">The shared mark</p>
         <h2 id="badge-h">Wear the tile on your own site.</h2>
-        <p>Every member — organisation or artist — drops this badge in their footer, linking back to the wall. That reciprocal link is what turns scattered sites into one network, and it quietly lifts everyone's local search.</p>
+        <p>Members put this badge in their footer, linking back to the wall. That link back is what turns scattered sites into one network: someone who finds any member can find the rest.</p>
       </div>
       <a class="badge-demo" href="#top">
         <span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <b>Member · Philadelphia Creative Alliance</b>
       </a>
-<pre aria-label="Badge embed code">&lt;a href="https://philadelphiacreativealliance.com"&gt;
-  Member · Philadelphia Creative Alliance
+      <p class="note" style="margin-top:1.6rem;">Paste this anywhere. It's self-contained — no stylesheet, no script, and it renders as the badge above.</p>
+<pre aria-label="Badge embed code">&lt;a href="https://philadelphiacreativealliance.com"
+   style="display:inline-flex;align-items:center;gap:.6rem;padding:.6rem .85rem;
+          border:1px solid rgba(23,19,31,.16);border-radius:3px;text-decoration:none;
+          color:inherit;font:11px/1 ui-monospace,Menlo,Consolas,monospace;
+          letter-spacing:.08em;text-transform:uppercase"&gt;
+  &lt;span style="display:inline-grid;grid-template-columns:repeat(3,8px);
+               grid-auto-rows:8px;gap:2px" aria-hidden="true"&gt;
+    &lt;span style="background:#EC4A2C"&gt;&lt;/span&gt;&lt;span style="background:#F2B01E"&gt;&lt;/span&gt;
+    &lt;span style="background:#2F63E6"&gt;&lt;/span&gt;&lt;span style="background:#DB2F86"&gt;&lt;/span&gt;
+    &lt;span style="background:#12A17E"&gt;&lt;/span&gt;&lt;span style="background:#7A54E0"&gt;&lt;/span&gt;
+  &lt;/span&gt;
+  &lt;b&gt;Member · Philadelphia Creative Alliance&lt;/b&gt;
 &lt;/a&gt;</pre>
+      <p class="note" style="margin-top:1rem;">Prefer plain text? <code>&lt;a href="https://philadelphiacreativealliance.com"&gt;Member · Philadelphia Creative Alliance&lt;/a&gt;</code> works too.</p>
     </div>
   </section>
 </main>
@@ -581,6 +625,23 @@
   }
   function byId(id) { return document.getElementById(id); }
 
+  // Only ever emit http/https. Member sites are pasted in by hand from what an
+  // applicant typed, so a hostile `javascript:` value would otherwise run on
+  // this origin the moment someone clicked the tile.
+  function safeUrl(raw) {
+    if (!raw) return '';
+    try {
+      var u = new URL(raw, window.location.href);
+      return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+    } catch (e) { return ''; }
+  }
+
+  // Slugs come from PCA.orgTypes, but they are interpolated into a style
+  // attribute — restrict them so a stray quote can't break out into CSS.
+  function tileArt(slug) {
+    return /^[a-z0-9-]+$/.test(slug) ? 'url("img/tile-' + slug + '.webp")' : 'none';
+  }
+
   // --- the organisation wall -------------------------------------------------
   // One tile per member organisation, then an invitation slot for every kind
   // that has no member yet. The wall fills in as organisations join.
@@ -596,9 +657,10 @@
       if (!t) return;                       // unknown slug: skip rather than render a broken tile
       claimed[org.type] = true;
       var a = el('a', 'tile');
-      a.href = org.url || '#join';
-      if (org.url) { a.target = '_blank'; a.rel = 'noopener'; }
-      a.style.backgroundImage = 'url("img/tile-' + t.slug + '.webp")';
+      var href = safeUrl(org.url);
+      a.href = href || '#join';
+      if (href) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.style.backgroundImage = tileArt(t.slug);
       a.appendChild(el('span', 'k', t.label));
       a.appendChild(el('h3', null, org.name));
       a.appendChild(el('span', 'role', org.blurb || t.blurb));
@@ -611,7 +673,7 @@
       if (claimed[t.slug]) return;
       var a = el('a', 'tile open');
       a.href = '#join';
-      a.style.backgroundImage = 'url("img/tile-' + t.slug + '.webp")';
+      a.style.backgroundImage = tileArt(t.slug);
       a.appendChild(el('span', 'k', 'Invitation open'));
       a.appendChild(el('h3', null, t.label));
       a.appendChild(el('span', 'role', t.blurb));
@@ -627,7 +689,7 @@
     if (grid) {
       PCA.disciplines.forEach(function (d) {
         var a = el('a', null);
-        a.href = '#join';
+        a.href = '#join-artist';   // opens the free artist form, not the org one
         var dot = el('span', 'dot');
         dot.style.background = 'var(--t' + (d.t || 1) + ')';
         dot.setAttribute('aria-hidden', 'true');
@@ -640,8 +702,9 @@
     if (roster) {
       PCA.artists.forEach(function (m) {
         var a = el('a', null);
-        a.href = m.url || '#';
-        if (m.url) { a.target = '_blank'; a.rel = 'noopener'; }
+        var href = safeUrl(m.url);
+        a.href = href || '#join-artist';
+        if (href) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
         a.appendChild(el('span', 'n', m.name));
         a.appendChild(el('span', 'd', m.discipline));
         roster.appendChild(a);
@@ -671,14 +734,15 @@
   function initTabs() {
     var tabs = [byId('tab-org'), byId('tab-artist')].filter(Boolean);
     if (tabs.length !== 2) return;
-    function select(i) {
+    function select(i, moveFocus) {
       tabs.forEach(function (t, j) {
         var on = i === j;
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
-        byId(t.getAttribute('aria-controls')).hidden = !on;
+        var panel = byId(t.getAttribute('aria-controls'));
+        if (panel) panel.hidden = !on;   // a renamed panel id must not throw mid-loop
       });
-      tabs[i].focus();
+      if (moveFocus !== false) tabs[i].focus();
     }
     tabs.forEach(function (t, i) {
       t.addEventListener('click', function () { select(i); });
@@ -686,8 +750,27 @@
         if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
           e.preventDefault();
           select((i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length);
+        } else if (e.key === 'Home' || e.key === 'End') {
+          e.preventDefault();
+          select(e.key === 'Home' ? 0 : tabs.length - 1);
         }
       });
+    });
+
+    // Route the artist funnel to the artist form. Every discipline chip and the
+    // hero's "Join as an artist" point at #join-artist; without this they land
+    // on the Organisation tab, which is the wrong door for a free signup.
+    function openArtistTab() {
+      select(1, false);
+      var panel = byId('join');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    document.querySelectorAll('a[href="#join-artist"]').forEach(function (a) {
+      a.addEventListener('click', function (e) { e.preventDefault(); openArtistTab(); });
+    });
+    if (window.location.hash === '#join-artist') openArtistTab();
+    window.addEventListener('hashchange', function () {
+      if (window.location.hash === '#join-artist') openArtistTab();
     });
   }
 
@@ -703,6 +786,7 @@
     if (formEndpoint) f.setAttribute('action', formEndpoint);
     var ok = byId(okId), err = byId(errId);
     var submit = f.querySelector('button[type=submit]');
+    submit.disabled = false;   // ships disabled; only JS can make it work
 
     function mailtoFallback() {
       var lines = [];
@@ -719,12 +803,24 @@
       submit.textContent = 'Sent';
       submit.disabled = true;
     }
+    // The mailto path has NOT delivered anything — it hands a draft to the
+    // user's mail client, which they still have to send, and which silently
+    // no-ops when no mail handler is registered. Saying "your application is
+    // in" here would be a lie that also loses the submission.
+    function handedToEmailClient() {
+      ok.hidden = true;
+      err.textContent = 'Your email client should now be open with this filled in — '
+        + 'press send there to reach us. Nothing has been sent yet. '
+        + 'If nothing opened, write to ' + PCA.joinEmail + '.';
+      err.hidden = false;
+      submit.textContent = 'Finish in your email client';
+    }
 
     f.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!f.checkValidity()) { f.reportValidity(); return; }
       err.hidden = true;
-      if (!formEndpoint) { mailtoFallback(); succeeded(); return; }
+      if (!formEndpoint) { mailtoFallback(); handedToEmailClient(); return; }
       submit.disabled = true;
       fetch(formEndpoint, {
         method: 'POST',
@@ -734,11 +830,11 @@
         if (!r.ok) throw new Error('bad status ' + r.status);
         succeeded();
       }).catch(function () {
-        // Never swallow it: say so, and offer the route that always works.
+        // Never swallow it, and never claim it landed: the mailto is a draft
+        // the user still has to send.
         submit.disabled = false;
-        err.textContent = "That didn't send. Opening your email client instead — or write to " + PCA.joinEmail + ".";
-        err.hidden = false;
         mailtoFallback();
+        handedToEmailClient();
       });
     });
   }

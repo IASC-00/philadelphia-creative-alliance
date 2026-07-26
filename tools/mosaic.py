@@ -12,10 +12,14 @@ between neighbouring tiles, and a wall that is deliberately unfinished.
 
 Usage:
     python3 tools/mosaic.py            # regenerate everything into img/
-    python3 tools/mosaic.py --check    # verify outputs exist and are non-trivial
+    python3 tools/mosaic.py --check    # verify outputs match img/manifest.json
 
-Deterministic: every asset is seeded from its own name, so regenerating produces
-byte-identical output and a given organisation type always gets the same texture.
+Deterministic on a fixed toolchain: every asset is seeded from its own name, so
+a given organisation type always gets the same texture and a rebuild reproduces
+the same bytes. That guarantee is scoped -- numpy does not promise Generator
+streams are stable across versions (NEP 19), and encoder output moves with
+Pillow/libwebp. `--check` compares against img/manifest.json for exactly this
+reason, rather than trusting a rebuild to match.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from __future__ import annotations
 import argparse
 import colorsys
 import hashlib
+import json
 import math
 import sys
 from pathlib import Path
@@ -49,8 +54,34 @@ TILE_HUES = {
 }
 PALETTE = list(TILE_HUES.values())
 
-SERIF_BOLD = "/usr/share/fonts/opentype/urw-base35/P052-Bold.otf"
-MONO = "/usr/share/fonts/opentype/urw-base35/NimbusMonoPS-Regular.otf"
+# P052 is URW's Palatino clone, matching the site's --serif token. These paths
+# only exist where ghostscript's base-35 fonts are installed, so fall back
+# rather than dying on the 5th of 14 assets and leaving img/ half-written.
+SERIF_CANDIDATES = (
+    "/usr/share/fonts/opentype/urw-base35/P052-Bold.otf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+    "/System/Library/Fonts/Supplemental/Palatino.ttc",
+    "/Library/Fonts/Georgia.ttf",
+)
+MONO_CANDIDATES = (
+    "/usr/share/fonts/opentype/urw-base35/NimbusMonoPS-Regular.otf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    "/System/Library/Fonts/Menlo.ttc",
+)
+
+
+def load_font(candidates, size):
+    for path in candidates:
+        if Path(path).exists():
+            try:
+                return ImageFont.truetype(path, size)
+            except OSError:
+                continue
+    raise SystemExit(
+        "No usable font found. Install ghostscript's base-35 fonts "
+        "(Debian/Ubuntu: apt install fonts-urw-base35) or DejaVu.\n"
+        f"Looked in: {', '.join(candidates)}"
+    )
 
 SS = 3  # supersample factor — render big, downscale for clean tessera edges
 
@@ -159,8 +190,6 @@ def mosaic_field(
                 (gx[r + 1, c], gy[r + 1, c]),
             ]
             pts = inset_polygon(quad, grout_px * SS)
-            if min(len(pts), 4) < 3:
-                continue
 
             if rng.random() > fill_rate:
                 # left as grout/ground: the wall is deliberately incomplete
@@ -220,7 +249,7 @@ def pick_hue(palette: list, field_value: float, rng):
     if len(palette) == 1:
         return palette[0]
     pos = field_value * len(palette) + rng.normal(0, 0.9)
-    return palette[int(pos) % len(palette)]
+    return palette[math.floor(pos) % len(palette)]
 
 
 def add_grain(img: Image.Image, rng, amount=3.0) -> Image.Image:
@@ -350,8 +379,8 @@ def build_og() -> Image.Image:
     # hairline between artwork and type, the way a plate sits above a caption
     draw.rectangle([0, band_h, W, band_h + 3], fill=accent)
 
-    serif = ImageFont.truetype(SERIF_BOLD, 74)
-    mono_sm = ImageFont.truetype(MONO, 21)
+    serif = load_font(SERIF_CANDIDATES, 74)
+    mono_sm = load_font(MONO_CANDIDATES, 21)
     tagline = "GREATER PHILADELPHIA   ·   CREATIVE ORGANISATIONS, ONE ALLIANCE"
 
     # Lay the type block out from real font metrics. Hand-picked offsets put the
@@ -384,22 +413,31 @@ def build_og() -> Image.Image:
 # came out ~10x smaller at visually identical quality (1074 KB -> 125 KB on the
 # hero). og.png stays a real PNG — social scrapers are still uneven on WebP — and
 # is palette-quantized instead, which the limited mosaic palette takes well.
+# filename -> (builder, expected (width, height))
 ASSETS = {
-    "hero-mosaic-light.webp": lambda: build_hero(False),
-    "hero-mosaic-dark.webp": lambda: build_hero(True),
-    "divider-light.webp": lambda: build_divider(False),
-    "divider-dark.webp": lambda: build_divider(True),
-    "og.png": build_og,
+    "hero-mosaic-light.webp": (lambda: build_hero(False), (1000, 1000)),
+    "hero-mosaic-dark.webp": (lambda: build_hero(True), (1000, 1000)),
+    "divider-light.webp": (lambda: build_divider(False), (1600, 48)),
+    "divider-dark.webp": (lambda: build_divider(True), (1600, 48)),
+    "og.png": (build_og, (1200, 630)),
 }
 for _slug, _hue in ORG_TYPES:
-    ASSETS[f"tile-{_slug}.webp"] = lambda s=_slug, h=_hue: build_org_tile(s, h)
+    ASSETS[f"tile-{_slug}.webp"] = (
+        lambda s=_slug, h=_hue: build_org_tile(s, h),
+        (520, 380),
+    )
 
 WEBP_QUALITY = 82
+MANIFEST = IMG / "manifest.json"
 
 
 def target_path(filename: str) -> Path:
     """og.png sits at the repo root (referenced by absolute URL in the OG tags)."""
     return ROOT / "og.png" if filename == "og.png" else IMG / filename
+
+
+def sha256_of(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def save_asset(img: Image.Image, target: Path) -> None:
@@ -415,42 +453,88 @@ def save_asset(img: Image.Image, target: Path) -> None:
 def generate():
     IMG.mkdir(exist_ok=True)
     total = 0
-    for filename, builder in ASSETS.items():
+    manifest = {}
+    for filename, (builder, expected) in ASSETS.items():
         target = target_path(filename)
         img = builder()
+        if (img.width, img.height) != expected:
+            raise SystemExit(
+                f"{filename}: builder produced {img.width}x{img.height}, "
+                f"declared {expected[0]}x{expected[1]}"
+            )
         save_asset(img, target)
         kb = target.stat().st_size / 1024
         total += kb
+        manifest[filename] = {
+            "sha256": sha256_of(target),
+            "width": img.width,
+            "height": img.height,
+        }
         print(f"  {target.relative_to(ROOT)}  {img.width}x{img.height}  {kb:.0f} KB")
+    MANIFEST.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    print(f"  {MANIFEST.relative_to(ROOT)}  ({len(manifest)} entries)")
     print(f"\n  total {total / 1024:.2f} MB across {len(ASSETS)} assets")
 
 
 def check() -> int:
-    """Verify every declared asset exists, decodes, and isn't a blank frame."""
+    """
+    Verify the committed assets are the ones this generator produces.
+
+    Existence + "not a flat frame" is not enough on its own: an audit swapped in
+    the retired v1 og.png and a 64x64 crop and an earlier version of this check
+    passed both. So it compares sha256 and dimensions against the manifest
+    written at generation time, which is committed alongside the images.
+    """
     failures = []
     total = 0.0
-    for filename in ASSETS:
+    if not MANIFEST.exists():
+        print(
+            f"FAILED: {MANIFEST.relative_to(ROOT)} missing — run without --check first"
+        )
+        return 1
+    manifest = json.loads(MANIFEST.read_text())
+
+    for filename, (_builder, expected) in ASSETS.items():
         target = target_path(filename)
         if not target.exists():
             failures.append(f"{filename}: missing")
             continue
+        if filename not in manifest:
+            failures.append(f"{filename}: absent from manifest")
+            continue
         total += target.stat().st_size / 1024
+        entry = manifest[filename]
         with Image.open(target) as im:
             im.load()
             spread = float(np.asarray(im.convert("RGB")).std())
             dims = (im.width, im.height)
-        if spread < 6.0:
-            # catches a builder that silently produced an empty or solid frame
+
+        if dims != expected:
+            failures.append(
+                f"{filename}: {dims[0]}x{dims[1]}, expected {expected[0]}x{expected[1]}"
+            )
+        elif (dims[0], dims[1]) != (entry["width"], entry["height"]):
+            failures.append(f"{filename}: dimensions disagree with manifest")
+        elif sha256_of(target) != entry["sha256"]:
+            failures.append(
+                f"{filename}: content does not match manifest (stale or replaced)"
+            )
+        elif spread < 6.0:
             failures.append(f"{filename}: near-flat image (std {spread:.1f})")
         else:
             print(f"  ok  {filename}  {dims[0]}x{dims[1]}  std {spread:.1f}")
+
+    stray = sorted(set(manifest) - set(ASSETS))
+    for s in stray:
+        failures.append(f"{s}: in manifest but no longer declared")
+
     if failures:
         print("\nFAILED:")
         for f in failures:
             print(f"  {f}")
         return 1
     print(
-        f"\nAll {len(ASSETS)} assets present and non-trivial ({total / 1024:.2f} MB total)."
+        f"\nAll {len(ASSETS)} assets match the manifest ({total / 1024:.2f} MB total)."
     )
     return 0
 

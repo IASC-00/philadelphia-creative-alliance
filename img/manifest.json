@@ -1,0 +1,72 @@
+{
+  "divider-dark.webp": {
+    "height": 48,
+    "sha256": "d89dfa4b3f36c686d6dd7859d7ed030c89e3b1130d7915e094ed04a713140f2f",
+    "width": 1600
+  },
+  "divider-light.webp": {
+    "height": 48,
+    "sha256": "57416b7ea2c096fb9e4bf0275418ca0015ba30819022642710409c343d1e01b6",
+    "width": 1600
+  },
+  "hero-mosaic-dark.webp": {
+    "height": 1000,
+    "sha256": "56be2a716a3b061c6c43574ec88e67c606e5127d568d4eb90f1f55f8a92cba1e",
+    "width": 1000
+  },
+  "hero-mosaic-light.webp": {
+    "height": 1000,
+    "sha256": "430bb3bd28d739829836052a6ddaf9afbcc57ba19ada09918bce8d44817837c4",
+    "width": 1000
+  },
+  "og.png": {
+    "height": 630,
+    "sha256": "7cd7561acb9759b8034b08ac7cc216f660fa756b75458de23e99987c46e55ad5",
+    "width": 1200
+  },
+  "tile-arts-education.webp": {
+    "height": 380,
+    "sha256": "c9828f4c69c5f834c172350b3a8d41875dee14d36de97a19d25cf0c388eb4227",
+    "width": 520
+  },
+  "tile-community-spaces.webp": {
+    "height": 380,
+    "sha256": "522548d57f8547faeea11bc9a079c3ed84acdc7dd666f63365129befc64a11d7",
+    "width": 520
+  },
+  "tile-craft-design.webp": {
+    "height": 380,
+    "sha256": "911dd5eb465a71aa6a1a9b9fe4fd62dfc84cdfca7bb1fda0383eba8ee28f6eb6",
+    "width": 520
+  },
+  "tile-festivals-events.webp": {
+    "height": 380,
+    "sha256": "f53ea5c90448360669c0b02ca7654232e412cb0a1f621a69c487922ec7a7c869",
+    "width": 520
+  },
+  "tile-film-media.webp": {
+    "height": 380,
+    "sha256": "8c47a145de1d2c890c49bdef5e6cfc3a9db2410054c72c03efddcf2c24293b2f",
+    "width": 520
+  },
+  "tile-literary-publishing.webp": {
+    "height": 380,
+    "sha256": "ceccf0f3eea7ef9c77d28982816ba096230e48ce07faa8415de8520f406953ef",
+    "width": 520
+  },
+  "tile-music-sound.webp": {
+    "height": 380,
+    "sha256": "8f58b0f6864c995adb6cb9c59ecb523df52b67ffbdc53c8afe1b179ab2ec9ac1",
+    "width": 520
+  },
+  "tile-theatre-performance.webp": {
+    "height": 380,
+    "sha256": "3733bb483cdecec8a67558f80011ca72a01950ca47e4329900077c850e944dac",
+    "width": 520
+  },
+  "tile-visual-arts.webp": {
+    "height": 380,
+    "sha256": "064a43d1d4d26da0874e49e85026fe0d1c954ccf67f6f962f75f5f1b43f58c3f",
+    "width": 520
+  }
+}

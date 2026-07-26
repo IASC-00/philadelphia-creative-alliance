@@ -6,7 +6,10 @@ film and media, literary, craft and design, arts education, community spaces, an
 
 Individual artists join free.
 
-**Live at** https://philadelphiacreativealliance.com
+**Status: working draft, not launched.** `philadelphiacreativealliance.com` is registered but
+still points at registrar parking — the site is not serving there yet. The join forms are wired
+but inert until a Formspree ID is set, and donations are off until the Alliance has an entity to
+receive them.
 
 ## This repo
 
@@ -31,13 +34,18 @@ python3 -m http.server 8080   # then open http://localhost:8080
 Every image is generated, never photographed or licensed. Regenerate with:
 
 ```bash
-python3 tools/mosaic.py            # rebuild all assets
-python3 tools/mosaic.py --check    # verify they exist and aren't blank
+python3 tools/mosaic.py            # rebuild all assets + img/manifest.json
+python3 tools/mosaic.py --check    # verify assets match the manifest
 ```
 
-Requires `pillow` and `numpy`. Output is deterministic — each asset is seeded from its own name,
-so a rebuild reproduces the same artwork and a given organisation type always gets the same tile
-texture.
+Requires `pillow`, `numpy`, and a serif + monospace font on disk. On Debian/Ubuntu that means
+`apt install fonts-urw-base35` (URW's Palatino clone, matching the site's serif); DejaVu and the
+macOS system fonts are used as fallbacks.
+
+Output is deterministic on a fixed toolchain — each asset is seeded from its own name, so a
+rebuild reproduces the same bytes and a given organisation type always gets the same tile texture.
+That guarantee doesn't extend across numpy or Pillow versions, which is why `--check` compares
+sha256 and dimensions against the committed `img/manifest.json` rather than trusting a rebuild.
 
 ## Adding a member
 
@@ -58,6 +66,10 @@ PCA.artists = [
 `type` must match a `slug` in `PCA.orgTypes`, which also names its tile texture
 (`img/tile-<slug>.webp`). An unrecognised slug is skipped rather than rendered broken. Each
 organisation added claims its slot; kinds with no member keep showing an open invitation.
+
+`url` is filtered to `http:`/`https:` before it reaches the DOM — anything else is dropped and the
+tile falls back to the join form. Don't remove that check: these values are transcribed by hand
+from what an applicant typed.
 
 ## Members
 
