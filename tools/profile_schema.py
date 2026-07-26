@@ -199,11 +199,15 @@ def load_all(directory: Path) -> list[Profile]:
     seen: dict[str, Path] = {}
     for path in sorted(Path(directory).glob("*.json")):
         profile = load_profile(path)
-        slug = profile.slug or slugify(profile.name)
-        if not slug:
+        if profile.slug:
+            slug = profile.slug.strip()
+        else:
+            slug = slugify(profile.name)
+        if not slug.strip():
             raise ProfileError(
                 f"{path.name}: name produces an empty slug — set one by hand"
             )
+        slug = slug.strip()
         if slug in seen:
             raise ProfileError(
                 f"slug collision on {slug!r}: {seen[slug].name} and {path.name} — "

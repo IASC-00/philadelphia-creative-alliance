@@ -185,3 +185,15 @@ def test_punctuation_only_name_producing_empty_slug_is_an_error(tmp_path):
     (tmp_path / "punctuation.json").write_text(json.dumps(data))
     with pytest.raises(ProfileError, match="empty slug"):
         load_all(tmp_path)
+
+
+def test_whitespace_only_explicit_slug_is_an_error(tmp_path):
+    write_profile(tmp_path, slug="   ")
+    with pytest.raises(ProfileError, match="empty slug"):
+        load_all(tmp_path)
+
+
+def test_padded_explicit_slug_is_stripped(tmp_path):
+    write_profile(tmp_path, slug="  jane-doe  ")
+    profiles = load_all(tmp_path)
+    assert profiles[0].slug == "jane-doe"
