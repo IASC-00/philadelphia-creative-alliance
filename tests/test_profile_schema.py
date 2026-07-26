@@ -197,3 +197,37 @@ def test_padded_explicit_slug_is_stripped(tmp_path):
     write_profile(tmp_path, slug="  jane-doe  ")
     profiles = load_all(tmp_path)
     assert profiles[0].slug == "jane-doe"
+
+
+# Availability staleness tests
+
+from datetime import date
+
+from tools.profile_schema import STALE_AFTER_DAYS, availability_is_current
+
+TODAY = date(2026, 7, 26)
+
+
+def _with_updated(tmp_path, updated):
+    availability = {"status": "open", "openTo": ["commissions"], "updated": updated}
+    return load_profile(write_profile(tmp_path, availability=availability))
+
+
+def test_fresh_availability_is_current(tmp_path):
+    assert availability_is_current(_with_updated(tmp_path, "2026-07-26"), TODAY)
+
+
+def test_exactly_ninety_days_old_is_still_current(tmp_path):
+    assert availability_is_current(_with_updated(tmp_path, "2026-04-27"), TODAY)
+
+
+def test_ninety_one_days_old_is_stale(tmp_path):
+    assert not availability_is_current(_with_updated(tmp_path, "2026-04-26"), TODAY)
+
+
+def test_unparseable_date_is_treated_as_stale(tmp_path):
+    assert not availability_is_current(_with_updated(tmp_path, "soon"), TODAY)
+
+
+def test_threshold_is_ninety():
+    assert STALE_AFTER_DAYS == 90

@@ -6,6 +6,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, replace
+from datetime import date
 from pathlib import Path
 
 
@@ -216,3 +217,14 @@ def load_all(directory: Path) -> list[Profile]:
         seen[slug] = path
         profiles.append(replace(profile, slug=slug))
     return sorted(profiles, key=lambda p: p.name)
+
+
+STALE_AFTER_DAYS = 90
+
+
+def availability_is_current(profile: Profile, today: date) -> bool:
+    try:
+        updated = date.fromisoformat(profile.availability.updated)
+    except ValueError:
+        return False
+    return (today - updated).days <= STALE_AFTER_DAYS
