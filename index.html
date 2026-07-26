@@ -3,20 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Philadelphia Creative Alliance — visual &amp; physical artists across Greater Philadelphia</title>
-<meta name="description" content="A Greater Philadelphia alliance of visual and physical artists — painters, muralists, sculptors, ceramicists, printmakers, and performers. One wall to discover local makers, and for makers to find each other.">
+<title>Philadelphia Creative Alliance — the umbrella for Greater Philadelphia's creative organisations</title>
+<meta name="description" content="An umbrella connecting and supporting creative organisations across Greater Philadelphia — music, visual arts, theatre, film, literary, craft, arts education, community spaces and festivals. Artists join free.">
 <link rel="canonical" href="https://philadelphiacreativealliance.com/">
 <meta name="theme-color" content="#E9E7E0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141019" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Philadelphia Creative Alliance">
 <meta property="og:title" content="Philadelphia Creative Alliance">
-<meta property="og:description" content="A Greater Philadelphia alliance of visual and physical artists. One wall to discover local makers, and for makers to find each other.">
+<meta property="og:description" content="The umbrella connecting and supporting creative organisations across Greater Philadelphia. Artists join free.">
 <meta property="og:url" content="https://philadelphiacreativealliance.com/">
 <meta property="og:image" content="https://philadelphiacreativealliance.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Philadelphia Creative Alliance">
-<meta name="twitter:description" content="A Greater Philadelphia alliance of visual and physical artists.">
+<meta name="twitter:description" content="The umbrella connecting and supporting creative organisations across Greater Philadelphia.">
 <meta name="twitter:image" content="https://philadelphiacreativealliance.com/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='16' height='16' fill='%23EC4A2C'/%3E%3Crect x='16' width='16' height='16' fill='%232F63E6'/%3E%3Crect y='16' width='16' height='16' fill='%23F2B01E'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23DB2F86'/%3E%3C/svg%3E">
 <style>
@@ -30,6 +32,8 @@
     --accent:   #D63F26;   /* vermilion, deepened for light-ground contrast */
     --accent-ink: #FFFFFF;
     --shadow:   0 18px 40px -24px rgba(23,19,31,.5);
+    --hero-art: url("img/hero-mosaic-light.webp");
+    --rule-art: url("img/divider-light.webp");
 
     /* mosaic tile hues — same in both themes, this is the artwork */
     --t1:#EC4A2C; --t1i:#fff;   /* vermilion */
@@ -56,17 +60,21 @@
       --accent:   #F5573B;
       --accent-ink:#1a0a06;
       --shadow:   0 24px 54px -28px rgba(0,0,0,.75);
+      --hero-art: url("img/hero-mosaic-dark.webp");
+      --rule-art: url("img/divider-dark.webp");
     }
   }
   :root[data-theme="dark"] {
     --ground:#141019; --ground-2:#1D1826; --ink:#F3EEE7; --ink-soft:#B4AAC2;
     --line:rgba(243,238,231,.15); --accent:#F5573B; --accent-ink:#1a0a06;
     --shadow:0 24px 54px -28px rgba(0,0,0,.75);
+    --hero-art: url("img/hero-mosaic-dark.webp"); --rule-art: url("img/divider-dark.webp");
   }
   :root[data-theme="light"] {
     --ground:#E9E7E0; --ground-2:#F3F1EB; --ink:#17131F; --ink-soft:#4C4656;
     --line:rgba(23,19,31,.16); --accent:#D63F26; --accent-ink:#fff;
     --shadow:0 18px 40px -24px rgba(23,19,31,.5);
+    --hero-art: url("img/hero-mosaic-light.webp"); --rule-art: url("img/divider-light.webp");
   }
 
   * { box-sizing: border-box; }
@@ -107,7 +115,14 @@
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
   }
-  .brand { display: flex; align-items: center; gap: .6rem; font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; }
+  .brand { display: flex; align-items: center; gap: .6rem; font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; white-space: nowrap; min-width: 0; }
+  /* The wordmark cannot fit one line beside the nav on a phone — it needs ~230px
+     of a ~155px budget. Let it wrap to two lines instead of pushing the nav
+     off-screen. */
+  @media (max-width: 620px) {
+    .brand { white-space: normal; font-size: .7rem; line-height: 1.3; }
+    .brand .chips { flex: none; }
+  }
   .brand .chips { display: inline-grid; grid-template-columns: repeat(2,7px); grid-auto-rows: 7px; gap: 2px; }
   .brand .chips i { display:block; width:7px; height:7px; }
   .brand .chips i:nth-child(1){background:var(--t1)} .brand .chips i:nth-child(2){background:var(--t2)}
@@ -115,7 +130,7 @@
   .nav { display: flex; align-items: center; gap: 1.4rem; }
   .nav a { font-family: var(--mono); font-size: .72rem; letter-spacing:.12em; text-transform: uppercase; text-decoration: none; color: var(--ink-soft); }
   .nav a:hover { color: var(--ink); }
-  @media (max-width: 720px){ .nav a.hide-sm{ display:none; } }
+  @media (max-width: 860px){ .nav a.hide-sm{ display:none; } }
   .btn {
     display:inline-flex; align-items:center; gap:.5rem;
     font-family: var(--mono); font-size:.74rem; letter-spacing:.1em; text-transform:uppercase;
@@ -125,53 +140,87 @@
   }
   .btn:hover { transform: translateY(-2px); }
   .btn.solid { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   /* ---------- hero ---------- */
-  .hero { padding: clamp(3.5rem, 9vw, 7rem) 0 clamp(3rem,6vw,5rem); position: relative; overflow: hidden; }
-  .hero-grid { display:grid; grid-template-columns: 1.35fr .65fr; gap: clamp(2rem,5vw,4rem); align-items:center; }
+  .hero { padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(3rem,6vw,4.5rem); position: relative; overflow: hidden; }
+  .hero-grid { display:grid; grid-template-columns: 1.12fr .88fr; gap: clamp(2rem,5vw,3.5rem); align-items:center; }
   @media (max-width: 860px){ .hero-grid{ grid-template-columns:1fr; } }
-  .hero h1 { font-size: clamp(2.6rem, 6.4vw, 5rem); letter-spacing: -.015em; }
-  .hero .lede { font-size: 1.16rem; color: var(--ink-soft); margin: 1.6rem 0 2.2rem; max-width: 40ch; }
+  .hero h1 { font-size: clamp(2.5rem, 6vw, 4.6rem); letter-spacing: -.015em; }
+  .hero .lede { font-size: 1.14rem; color: var(--ink-soft); margin: 1.6rem 0 1.4rem; max-width: 46ch; }
+  .hero .free { font-family:var(--mono); font-size:.74rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink); border-left:3px solid var(--t4); padding-left:.7rem; margin:0 0 2rem; }
   .doors { display:flex; flex-wrap:wrap; gap:.8rem; }
-  /* decorative mosaic block in hero */
-  .hero-mosaic { display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; aspect-ratio: 1/1; }
-  .hero-mosaic span { border-radius:2px; opacity:0; transform: scale(.6); animation: pop .5s cubic-bezier(.2,.8,.3,1.2) forwards; }
-  @keyframes pop { to { opacity:1; transform: scale(1); } }
-  @media (prefers-reduced-motion: reduce){ .hero-mosaic span{ opacity:1; transform:none; animation:none; } }
+  /* generated mosaic artwork — see tools/mosaic.py */
+  .hero-art {
+    background-image: var(--hero-art);
+    background-size: cover; background-position: center;
+    aspect-ratio: 1/1; border-radius: 3px; box-shadow: var(--shadow);
+  }
+  @media (max-width: 860px){ .hero-art{ aspect-ratio: 16/7; } }
 
   /* ---------- generic section ---------- */
-  main section { padding: clamp(3.5rem, 7vw, 6rem) 0; border-top: 1px solid var(--line); }
-  .sec-head { max-width: 60ch; margin-bottom: 2.6rem; }
-  .sec-head h2 { font-size: clamp(1.9rem, 4vw, 3rem); letter-spacing:-.01em; }
-  .sec-head p { color: var(--ink-soft); margin-top: 1rem; font-size: 1.08rem; }
+  main section { padding: clamp(3.5rem, 7vw, 5.5rem) 0; border-top: 1px solid var(--line); }
+  .sec-head { max-width: 62ch; margin-bottom: 2.6rem; }
+  .sec-head h2 { font-size: clamp(1.9rem, 4vw, 2.9rem); letter-spacing:-.01em; }
+  .sec-head p { color: var(--ink-soft); margin-top: 1rem; font-size: 1.06rem; }
+  .rule { height: 14px; background-image: var(--rule-art); background-size: cover; background-position: center; opacity:.9; }
 
-  /* ---------- the mosaic / directory ---------- */
-  .mosaic-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 12px; }
+  /* ---------- what it does ---------- */
+  .pillars { display:grid; grid-template-columns: 1fr 1fr; gap: clamp(1.2rem,3vw,2.4rem); }
+  @media (max-width:820px){ .pillars{ grid-template-columns:1fr; } }
+  .pillar { border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:3px; padding: clamp(1.4rem,3vw,2rem); background: var(--ground-2); }
+  .pillar h3 { font-size:1.45rem; margin-bottom:.7rem; }
+  .pillar p { color:var(--ink-soft); margin:0; }
+  .pillar ul { margin:.9rem 0 0; padding-left:1.05rem; color:var(--ink-soft); font-size:.97rem; }
+  .pillar li { margin:.35rem 0; }
+
+  /* ---------- the org wall ---------- */
+  .mosaic-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 12px; }
   .tile {
-    position:relative; border-radius: 3px; padding: 1.4rem 1.3rem 1.5rem; min-height: 190px;
-    display:flex; flex-direction:column; text-decoration:none; color: var(--tile-ink, #fff);
-    background: var(--tile, var(--ground-2));
+    position:relative; overflow:hidden; border-radius: 3px; padding: 1.4rem 1.3rem 1.5rem; min-height: 200px;
+    display:flex; flex-direction:column; text-decoration:none; color:#fff;
+    background-color: var(--ground-2); background-size: cover; background-position:center;
     transition: transform .18s ease, box-shadow .18s ease;
+    isolation:isolate;
+  }
+  /* scrim guarantees text contrast over the generated texture */
+  .tile::before {
+    content:""; position:absolute; inset:0; z-index:-1;
+    background: linear-gradient(165deg, rgba(12,9,16,.20) 0%, rgba(12,9,16,.62) 62%, rgba(12,9,16,.82) 100%);
   }
   .tile:hover { transform: translateY(-4px) rotate(-.5deg); box-shadow: var(--shadow); }
-  .tile .k { font-family: var(--mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; opacity:.85; }
-  .tile h3 { font-size: 1.5rem; margin-top:.5rem; }
-  .tile .role { margin-top:auto; font-size:.92rem; opacity:.92; }
-  .tile.t1{--tile:var(--t1);--tile-ink:var(--t1i)} .tile.t2{--tile:var(--t2);--tile-ink:var(--t2i)}
-  .tile.t3{--tile:var(--t3);--tile-ink:var(--t3i)} .tile.t4{--tile:var(--t4);--tile-ink:var(--t4i)}
-  .tile.t5{--tile:var(--t5);--tile-ink:var(--t5i)} .tile.t6{--tile:var(--t6);--tile-ink:var(--t6i)}
-  /* open invitation tiles = grout outline, no fill */
-  .tile.open {
-    background: transparent; color: var(--ink);
-    border: 1.5px dashed var(--line);
-  }
-  .tile.open .k { color: var(--accent); opacity:1; }
-  .tile.open .role { opacity:.7; }
-  .tile.open:hover { border-color: var(--accent); }
+  .tile .k { font-family: var(--mono); font-size:.66rem; letter-spacing:.16em; text-transform:uppercase; opacity:.9; }
+  .tile h3 { font-size: 1.4rem; margin-top:.5rem; }
+  .tile .role { margin-top:auto; font-size:.9rem; opacity:.93; padding-top:.8rem; }
   .tile .arrow { position:absolute; top:1.2rem; right:1.2rem; font-size:1rem; }
+  /* Unclaimed slot: its own texture, dimmed but still carrying its hue — the
+     wall is unfinished, not blank. (Do not reach for background-blend-mode:
+     luminosity here; it desaturates every slot to the same grey.) */
+  .tile.open { color: var(--ink); border:1.5px dashed color-mix(in srgb, var(--ink) 32%, transparent); }
+  .tile.open::before { background: color-mix(in srgb, var(--ground) 77%, transparent); }
+  /* ink, not accent: vermilion-on-vermilion fails contrast on the red-hued
+     slots, and this label has to hold up on all nine tints */
+  .tile.open .k { color: var(--ink); opacity:.78; }
+  .tile.open .role { opacity:.72; }
+  .tile.open:hover { border-color: var(--accent); }
 
-  /* ---------- founders strip ---------- */
+  /* ---------- artist chips ---------- */
+  .chipgrid { display:flex; flex-wrap:wrap; gap:.55rem; }
+  .chipgrid a {
+    font-family:var(--mono); font-size:.75rem; letter-spacing:.06em;
+    padding:.55rem .85rem; border:1px solid var(--line); border-radius:2px;
+    text-decoration:none; color:var(--ink-soft); background:var(--ground-2);
+    transition: border-color .15s ease, color .15s ease, transform .15s ease;
+  }
+  .chipgrid a:hover { border-color:var(--accent); color:var(--ink); transform:translateY(-2px); }
+  .chipgrid a .dot { display:inline-block; width:7px; height:7px; margin-right:.45rem; vertical-align:middle; }
+  .roster { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; margin-top:1.6rem; }
+  .roster a { border:1px solid var(--line); border-radius:3px; padding:.9rem 1rem; text-decoration:none; background:var(--ground-2); display:flex; flex-direction:column; gap:.2rem; }
+  .roster a:hover { border-color:var(--accent); }
+  .roster .n { font-family:var(--serif); font-size:1.1rem; font-weight:700; }
+  .roster .d { font-family:var(--mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
+
+  /* ---------- operators strip ---------- */
   .founders { display:grid; grid-template-columns: repeat(3,1fr); gap:14px; }
   @media (max-width:760px){ .founders{ grid-template-columns:1fr; } }
   .studio {
@@ -181,26 +230,40 @@
   }
   .studio:hover { border-color: var(--accent); transform: translateY(-3px); }
   .studio .k { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); }
-  .studio h3 { font-size:1.3rem; }
+  .studio h3 { font-size:1.25rem; }
   .studio .link { font-family:var(--mono); font-size:.74rem; color:var(--accent); margin-top:.4rem; }
 
-  /* ---------- join + support ---------- */
+  /* ---------- join ---------- */
   .split { display:grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem,4vw,3.5rem); align-items:start; }
   @media (max-width:820px){ .split{ grid-template-columns:1fr; } }
+  .tabs { display:flex; gap:.4rem; margin-bottom:1.4rem; border-bottom:1px solid var(--line); }
+  .tabs button {
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
+    padding:.75rem 1rem; background:transparent; border:0; border-bottom:2px solid transparent;
+    color:var(--ink-soft); cursor:pointer; margin-bottom:-1px;
+  }
+  .tabs button[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--accent); }
+  .tabs button:hover { color:var(--ink); }
   form { display:flex; flex-direction:column; gap:.9rem; max-width:none; }
   label { font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom:.35rem; }
-  input, select {
+  input, select, textarea {
     width:100%; padding:.8rem .9rem; font: inherit; font-size:.95rem;
     background: var(--ground-2); color:var(--ink);
     border:1px solid var(--line); border-radius:2px;
   }
+  textarea { min-height:84px; resize:vertical; }
   .form-ok { font-family:var(--mono); font-size:.82rem; color:var(--t4); padding-top:.4rem; }
+  .form-err { font-family:var(--mono); font-size:.82rem; color:var(--accent); padding-top:.4rem; }
+  .hp { position:absolute; left:-9999px; }
   .support-card { border:1px solid var(--line); border-radius:3px; padding: clamp(1.6rem,4vw,2.4rem); background: var(--ground-2); }
-  .support-card h3 { font-size:1.7rem; margin-bottom:.8rem; }
+  .support-card h3 { font-size:1.6rem; margin-bottom:.8rem; }
   .amount-row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1.2rem 0; }
   .amount { font-family:var(--mono); font-size:.8rem; padding:.55rem .9rem; border:1px solid var(--line); border-radius:2px; cursor:pointer; background:transparent; color:var(--ink); }
   .amount:hover, .amount[aria-pressed="true"]{ border-color:var(--accent); color:var(--accent); }
   .note { font-size:.82rem; color:var(--ink-soft); font-family:var(--mono); letter-spacing:.02em; }
+  .ways { list-style:none; padding:0; margin:1.2rem 0 0; }
+  .ways li { border-top:1px solid var(--line); padding:.7rem 0; font-size:.95rem; color:var(--ink-soft); }
+  .ways b { color:var(--ink); font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; display:block; }
 
   /* ---------- badge ---------- */
   .badge-demo { display:flex; align-items:center; gap:.6rem; padding:.6rem .85rem; border:1px solid var(--line); border-radius:3px; background:var(--ground-2); width:max-content; text-decoration:none; color:inherit; }
@@ -216,7 +279,7 @@
   footer { border-top:1px solid var(--line); padding: 3rem 0 4rem; }
   .foot { display:flex; justify-content:space-between; gap:1.5rem; flex-wrap:wrap; align-items:flex-end; }
   .foot .k { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
-  .foot h3 { font-size:1.5rem; }
+  .foot h3 { font-size:1.35rem; max-width:30ch; }
   .draft-tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:2px; padding:.3rem .55rem; }
 </style>
 </head>
@@ -227,10 +290,11 @@
 <header class="topbar">
   <a class="brand" href="#top">
     <span class="chips"><i></i><i></i><i></i><i></i></span>
-    Philadelphia&nbsp;Creative&nbsp;Alliance
+    <span>Philadelphia Creative Alliance</span>
   </a>
   <nav class="nav" aria-label="Primary">
-    <a class="hide-sm" href="#mosaic">The wall</a>
+    <a class="hide-sm" href="#organisations">Organisations</a>
+    <a class="hide-sm" href="#artists">Artists</a>
     <a class="hide-sm" href="#why">Why</a>
     <a href="#join">Join</a>
     <a class="btn solid" href="#support">Support</a>
@@ -241,56 +305,75 @@
   <section class="hero" aria-labelledby="hero-h">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">Greater Philadelphia · A creative alliance</p>
-        <h1 id="hero-h">A wall big enough for the whole region's makers.</h1>
-        <p class="lede">Painters, muralists, sculptors, ceramicists, printmakers, performers — across Philadelphia and the counties around it. One alliance, so clients can find you and you can find each other.</p>
+        <p class="eyebrow">Greater Philadelphia · Creative organisations</p>
+        <h1 id="hero-h">One alliance behind the region's creative organisations.</h1>
+        <p class="lede">Music nonprofits, galleries, theatre companies, film collectives, community arts spaces. Most of them running their own websites, their own promotion, their own tooling — alone. The Alliance is the shared layer underneath.</p>
+        <p class="free">Artists join free. Always.</p>
         <div class="doors">
-          <a class="btn solid" href="#mosaic">Find an artist</a>
-          <a class="btn" href="#join">Join the alliance</a>
+          <a class="btn solid" href="#join">Join as an organisation</a>
+          <a class="btn" href="#artists">Join as an artist</a>
         </div>
       </div>
-      <div class="hero-mosaic" aria-hidden="true">
-        <!-- 16 tiles, staggered pop-in -->
-        <span style="background:var(--t1); animation-delay:.02s"></span>
-        <span style="background:var(--t3); animation-delay:.10s"></span>
-        <span style="background:var(--ground-2); animation-delay:.06s"></span>
-        <span style="background:var(--t2); animation-delay:.14s"></span>
-        <span style="background:var(--ground-2); animation-delay:.18s"></span>
-        <span style="background:var(--t5); animation-delay:.08s"></span>
-        <span style="background:var(--t4); animation-delay:.22s"></span>
-        <span style="background:var(--ground-2); animation-delay:.12s"></span>
-        <span style="background:var(--t6); animation-delay:.26s"></span>
-        <span style="background:var(--t2); animation-delay:.16s"></span>
-        <span style="background:var(--ground-2); animation-delay:.30s"></span>
-        <span style="background:var(--t3); animation-delay:.20s"></span>
-        <span style="background:var(--t4); animation-delay:.34s"></span>
-        <span style="background:var(--ground-2); animation-delay:.24s"></span>
-        <span style="background:var(--t1); animation-delay:.38s"></span>
-        <span style="background:var(--t5); animation-delay:.28s"></span>
+      <div class="hero-art" role="img" aria-label="Generated mosaic artwork: irregular coloured tesserae set in dark grout, with gaps where tiles have not yet been laid."></div>
+    </div>
+  </section>
+
+  <div class="rule" aria-hidden="true"></div>
+
+  <section id="what" aria-labelledby="what-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">What it's for</p>
+        <h2 id="what-h">Connect the organisations. Support the work.</h2>
+        <p>The Alliance is forming now, so read this as what it's being built to do rather than what it already does. Two halves, and the second is the one nobody else is covering.</p>
+      </div>
+      <div class="pillars">
+        <div class="pillar">
+          <h3>Connect</h3>
+          <p>One front door for the region's creative organisations, so the scene is legible from outside it.</p>
+          <ul>
+            <li>A wall clients and funders can browse by kind of organisation</li>
+            <li>Referrals between members instead of cold outreach</li>
+            <li>A shared audience each member can reach</li>
+          </ul>
+        </div>
+        <div class="pillar">
+          <h3>Support</h3>
+          <p>Shared working infrastructure, so a two-person nonprofit isn't building alone what forty others also need.</p>
+          <ul>
+            <li>Web presence and the upkeep that follows it</li>
+            <li>Promotion that doesn't depend on one person's posting habit</li>
+            <li>Tooling and templates members can take and use</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="mosaic" aria-labelledby="mosaic-h">
+  <section id="organisations" aria-labelledby="orgs-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">The mosaic</p>
-        <h2 id="mosaic-h">The wall is going up.</h2>
-        <p>Every tile is a maker. We're setting the first ones now — and every discipline in the region has a place on it. See one that's yours? Claim it.</p>
+        <p class="eyebrow">Member organisations</p>
+        <h2 id="orgs-h">The wall is going up.</h2>
+        <p>Every tile is an organisation. Nine kinds, every one of them open — and we're setting the first tiles now. If one of these is yours, claim it.</p>
       </div>
-      <div class="mosaic-grid">
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Painters</h3><span class="role">Studio, plein-air, abstract, portrait.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Muralists &amp; street artists</h3><span class="role">Walls, paste-ups, public work.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Sculptors</h3><span class="role">Steel, stone, wood, found.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Ceramicists</h3><span class="role">Wheel, hand-built, tile, glaze.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Printmakers &amp; illustrators</h3><span class="role">Screen, letterpress, riso, ink.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Photographers</h3><span class="role">Film, digital, documentary, studio.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Acrobats &amp; performers</h3><span class="role">Circus, aerial, dance, street.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Textile &amp; fashion</h3><span class="role">Fiber, dye, garment, wearable art.</span></a>
-        <a class="tile open" href="#join"><span class="arrow" aria-hidden="true">↗</span><span class="k">Invitation open</span><h3>Glass &amp; makers</h3><span class="role">Blown, stained, mosaic, mixed.</span></a>
-      </div>
+      <div class="mosaic-grid" id="orgwall"></div>
     </div>
   </section>
+
+  <section id="artists" aria-labelledby="artists-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Artists</p>
+        <h2 id="artists-h">Artists join free. Always.</h2>
+        <p>You don't need an organisation behind you. Individual makers of every discipline are welcome on the wall, at no cost, with a link back to your own site and a badge to carry. This is the part of the Alliance that will never have a price on it.</p>
+      </div>
+      <div class="chipgrid" id="disciplines"></div>
+      <div class="roster" id="roster"></div>
+    </div>
+  </section>
+
+  <div class="rule" aria-hidden="true"></div>
 
   <section id="why" aria-labelledby="why-h">
     <div class="wrap">
@@ -299,8 +382,8 @@
         <h2 id="why-h">The talent isn't missing. The connections are.</h2>
       </div>
       <div class="split">
-        <p style="font-size:1.12rem;">The region is thick with makers — but they work in scattered studios, disconnected from the clients who'd hire them and from each other. Someone commissioning a mural, a sculpture for a lobby, or a live act for an opening has no single place to look. And an artist who could share a kiln, a wall, or a referral often never meets the one three neighborhoods over.</p>
-        <p style="color:var(--ink-soft)">The Alliance is the connective tissue: one wall clients browse by discipline, one network artists plug into, and one shared mark each member carries back to their own site — so a visitor to any member discovers the whole scene. No dues, no gatekeeping, no cut of your work. It's a working makers' wall — not an arts council, not a membership bureau — kept up by studios who'd rather build than hold meetings.</p>
+        <p style="font-size:1.1rem;">Greater Philadelphia has no shortage of creative organisations. What it lacks is anything joining them up. Each one carries its own website, its own mailing list, its own promotion — usually on one overworked person — and a funder or client trying to understand the scene has no single place to look. Meanwhile the organisation three neighbourhoods over is solving the exact same problem from scratch.</p>
+        <p style="color:var(--ink-soft)">There is already a body that represents the sector, convenes it, and moves grant money through it. That isn't this. <strong style="color:var(--ink)">We don't lobby. We build.</strong> The Alliance is the working layer: a shared front door, referrals between members, and infrastructure that member organisations can actually pick up and use. No cut of anyone's work, no gatekeeping, and free for artists permanently.</p>
       </div>
     </div>
   </section>
@@ -308,9 +391,9 @@
   <section id="behind" aria-labelledby="behind-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">The network behind it</p>
-        <h2 id="behind-h">Built and run by working studios.</h2>
-        <p>The Alliance is organized and hosted by a small group of regional creative studios — not a bureau, not a fee. They keep the wall up so the artists don't have to.</p>
+        <p class="eyebrow">Who runs it</p>
+        <h2 id="behind-h">Kept up by working studios.</h2>
+        <p>The Alliance is organised and hosted by a small group of regional studios. They are operators, not members — they keep the wall up so member organisations don't have to.</p>
       </div>
       <div class="founders">
         <a class="studio" href="https://upwield.com" target="_blank" rel="noopener">
@@ -338,27 +421,53 @@
   <section id="join" aria-labelledby="join-h">
     <div class="wrap split">
       <div>
-        <p class="eyebrow">Add your tile</p>
-        <h2 id="join-h" style="font-size:clamp(1.9rem,4vw,2.8rem);">Put your work on the wall.</h2>
-        <p style="color:var(--ink-soft); margin-top:1rem;">Free to join while we're setting the first tiles. Tell us who you are and what you make — we review, then you're on the wall with a link back to your own site and a badge to carry.</p>
+        <p class="eyebrow">Claim a tile</p>
+        <h2 id="join-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Put your organisation on the wall.</h2>
+        <p style="color:var(--ink-soft); margin-top:1rem;">Tell us who you are and what you do. We read every application, then come back to you about what the Alliance can carry for you and what you'd want from it.</p>
+        <p style="color:var(--ink-soft);">Individual artists use the second tab — that route is free and always will be.</p>
       </div>
-      <form id="joinform" method="POST" novalidate>
-        <div class="field"><label for="jn">Name / studio</label><input id="jn" name="name" autocomplete="name" required></div>
-        <div class="field"><label for="je">Email</label><input id="je" type="email" name="email" autocomplete="email" required></div>
-        <div class="field"><label for="jw">Website or portfolio</label><input id="jw" name="site" placeholder="https://" autocomplete="url"></div>
-        <div class="field"><label for="jd">Discipline</label>
-          <select id="jd" name="discipline">
-            <option>Painter</option><option>Muralist / street artist</option><option>Sculptor</option>
-            <option>Ceramicist</option><option>Printmaker / illustrator</option><option>Photographer</option>
-            <option>Acrobat / performer</option><option>Textile / fashion</option><option>Glass / mixed media</option>
-            <option>Other</option>
-          </select>
+      <div>
+        <div class="tabs" role="tablist" aria-label="Membership type">
+          <button type="button" role="tab" id="tab-org" aria-controls="panel-org" aria-selected="true">Organisation</button>
+          <button type="button" role="tab" id="tab-artist" aria-controls="panel-artist" aria-selected="false" tabindex="-1">Artist — free</button>
         </div>
-        <input type="hidden" name="_subject" value="New Philadelphia Creative Alliance tile request">
-        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute; left:-9999px">
-        <button class="btn solid" type="submit">Request a tile</button>
-        <p class="form-ok" id="joinok" role="status" hidden>Thanks — your request is in. We'll be in touch to set your tile.</p>
-      </form>
+
+        <div id="panel-org" role="tabpanel" aria-labelledby="tab-org">
+          <form id="orgform" method="POST" novalidate>
+            <input type="hidden" name="type" value="organisation">
+            <div><label for="on">Organisation name</label><input id="on" name="organisation" autocomplete="organization" required></div>
+            <div><label for="ok">Kind of organisation</label>
+              <select id="ok" name="kind"></select>
+            </div>
+            <div><label for="oc">Contact name &amp; role</label><input id="oc" name="contact" autocomplete="name" required></div>
+            <div><label for="oe">Email</label><input id="oe" type="email" name="email" autocomplete="email" required></div>
+            <div><label for="ow">Website</label><input id="ow" name="site" placeholder="https://" autocomplete="url"></div>
+            <div><label for="od">What would you want from the Alliance?</label><textarea id="od" name="needs"></textarea></div>
+            <input type="hidden" name="_subject" value="PCA — organisation application">
+            <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <button class="btn solid" type="submit">Send application</button>
+            <p class="form-ok" id="orgok" role="status" hidden>Thanks — your application is in. We'll come back to you.</p>
+            <p class="form-err" id="orgerr" role="alert" hidden></p>
+          </form>
+        </div>
+
+        <div id="panel-artist" role="tabpanel" aria-labelledby="tab-artist" hidden>
+          <form id="artistform" method="POST" novalidate>
+            <input type="hidden" name="type" value="artist">
+            <div><label for="an">Name / studio</label><input id="an" name="name" autocomplete="name" required></div>
+            <div><label for="ae">Email</label><input id="ae" type="email" name="email" autocomplete="email" required></div>
+            <div><label for="aw">Website or portfolio</label><input id="aw" name="site" placeholder="https://" autocomplete="url"></div>
+            <div><label for="ad">Discipline</label>
+              <select id="ad" name="discipline"></select>
+            </div>
+            <input type="hidden" name="_subject" value="PCA — artist join request">
+            <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <button class="btn solid" type="submit">Join free</button>
+            <p class="form-ok" id="artistok" role="status" hidden>Thanks — you're in the queue. We'll be in touch to set your tile.</p>
+            <p class="form-err" id="artisterr" role="alert" hidden></p>
+          </form>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -366,12 +475,18 @@
     <div class="wrap split">
       <div>
         <p class="eyebrow">Keep it free</p>
-        <h2 id="support-h" style="font-size:clamp(1.9rem,4vw,2.8rem);">Chip in to keep the wall up.</h2>
-        <p style="color:var(--ink-soft); margin-top:1rem;">Membership stays free for artists. Donations cover hosting, printing the badges and stickers, and small grants back to makers. Give what a coffee's worth or more.</p>
+        <h2 id="support-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Back the wall.</h2>
+        <p style="color:var(--ink-soft); margin-top:1rem;">Artist membership is free and stays free. Keeping it that way costs something — hosting, printing badges and stickers, and the time that goes into the wall.</p>
+        <p style="color:var(--ink-soft);">Money is the obvious way to help. It isn't the only one, and right now it isn't even the most useful one.</p>
       </div>
       <div class="support-card">
-        <h3>Support the Alliance</h3>
-        <p style="color:var(--ink-soft); margin:0;">One-time, no account needed.</p>
+        <h3>Ways to help</h3>
+        <ul class="ways">
+          <li><b>Space</b> A room for a meet-up, a wall, a window.</li>
+          <li><b>Print</b> Badges, stickers, and signage at cost.</li>
+          <li><b>Referrals</b> Introduce an organisation that should be on the wall.</li>
+          <li><b>Money</b> Covers hosting and materials.</li>
+        </ul>
         <div class="amount-row" role="group" aria-label="Donation amount">
           <button type="button" class="amount" aria-pressed="false">$5</button>
           <button type="button" class="amount" aria-pressed="true">$25</button>
@@ -379,7 +494,7 @@
           <button type="button" class="amount" aria-pressed="false">Other</button>
         </div>
         <a class="btn solid" href="#" id="donate" style="width:100%; justify-content:center;">Chip in</a>
-        <p class="note" style="margin-top:1rem;">Payments not wired yet — this button points where you choose (Ko-fi, PayPal, or Stripe) once the Alliance has an account to receive them.</p>
+        <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first. Until then, the four routes above are live and the fastest is a referral.</p>
       </div>
     </div>
   </section>
@@ -389,7 +504,7 @@
       <div class="sec-head">
         <p class="eyebrow">The shared mark</p>
         <h2 id="badge-h">Wear the tile on your own site.</h2>
-        <p>Every member drops this badge in their footer, linking back to the wall. That reciprocal link is what turns scattered sites into one network — and quietly lifts everyone's local search.</p>
+        <p>Every member — organisation or artist — drops this badge in their footer, linking back to the wall. That reciprocal link is what turns scattered sites into one network, and it quietly lifts everyone's local search.</p>
       </div>
       <a class="badge-demo" href="#top">
         <span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -406,65 +521,250 @@
   <div class="wrap foot">
     <div>
       <p class="k">Greater Philadelphia</p>
-      <h3>Painters · sculptors · street artists · performers</h3>
-      <p class="k" style="margin-top:.8rem;">© 2026 · A regional creative alliance</p>
+      <h3>An umbrella for creative organisations. Free for artists.</h3>
+      <p class="k" style="margin-top:.8rem;">© 2026 · Philadelphia Creative Alliance</p>
     </div>
-    <span class="draft-tag">Working draft · v1</span>
+    <span class="draft-tag">Working draft · v2</span>
   </div>
 </footer>
 
 <script>
   /* -------------------------------------------------------------------------
-     LAUNCH PANEL — the whole site goes live from these four lines.
-     Fill them in, commit, point DNS. Nothing else needs to change.
+     LAUNCH PANEL — the site goes live from this block.
+     Fill it in, commit, point DNS. Nothing else needs to change.
+
+     orgs / artists start empty on purpose: nothing public may claim a member
+     who has not agreed in writing to be listed. Adding one is a single object.
      ------------------------------------------------------------------------- */
   var PCA = {
-    formspreeId: '',                    // Formspree form id (e.g. 'xbljabcd'). Empty = join form falls back to email.
+    formspreeId: '',                    // Formspree form id (e.g. 'xbljabcd'). Empty = forms fall back to email.
     donateUrl:   '',                    // Ko-fi / PayPal / Stripe link. Empty = Support button stays inactive.
-    joinEmail:   'contact@iswain.dev',  // Fallback inbox for join requests. Swap to hello@philadelphiacreativealliance.com when it exists.
-    live:        false                  // Set true at launch to drop the "Working draft · v1" tag.
+    joinEmail:   'contact@iswain.dev',  // Fallback inbox. Swap to hello@philadelphiacreativealliance.com when it exists.
+    live:        false,                 // Set true at launch to drop the "Working draft" tag.
+
+    // Kinds of member organisation. `slug` maps to img/tile-<slug>.webp.
+    orgTypes: [
+      { slug:'music-sound',         label:'Music & sound',            blurb:'Venues, labels, promoters, festivals, radio.' },
+      { slug:'visual-arts',         label:'Visual arts & galleries',  blurb:'Galleries, studios, collectives, print shops.' },
+      { slug:'theatre-performance', label:'Theatre & performance',    blurb:'Companies, dance, circus, improv, puppetry.' },
+      { slug:'film-media',          label:'Film & media',             blurb:'Production houses, festivals, docs, animation.' },
+      { slug:'literary-publishing', label:'Literary & publishing',    blurb:'Presses, zines, reading series, poetry orgs.' },
+      { slug:'craft-design',        label:'Craft, design & studios',  blurb:'Makerspaces, ceramics, textile, wood, glass.' },
+      { slug:'arts-education',      label:'Arts education & youth',   blurb:'After-school, teaching artists, workshops.' },
+      { slug:'community-spaces',    label:'Community & cultural',     blurb:'Neighbourhood arts spaces, cultural centres.' },
+      { slug:'festivals-events',    label:'Festivals & events',       blurb:'Street fairs, open studios, seasonal events.' }
+    ],
+
+    // Member organisations. { name, type (a slug above), url, blurb }
+    orgs: [],
+
+    // Disciplines open to individual artists. `t` picks a mosaic hue, 1-6.
+    disciplines: [
+      { label:'Painters', t:1 },            { label:'Muralists & street artists', t:2 },
+      { label:'Sculptors', t:3 },           { label:'Ceramicists', t:4 },
+      { label:'Printmakers & illustrators', t:5 }, { label:'Photographers', t:6 },
+      { label:'Musicians & sound', t:1 },   { label:'Dancers & performers', t:2 },
+      { label:'Textile & fashion', t:3 },   { label:'Glass & mixed media', t:4 },
+      { label:'Writers', t:5 },             { label:'Filmmakers', t:6 }
+    ],
+
+    // Member artists. { name, discipline, url }
+    artists: []
   };
 
-  // --- Join form: POST to Formspree when configured; otherwise fall back to a prefilled
-  //     mailto so a request still reaches the inbox — no dead button pre-launch.
-  var f = document.getElementById('joinform');
-  var formEndpoint = PCA.formspreeId ? 'https://formspree.io/f/' + PCA.formspreeId : '';
-  if (f && formEndpoint) f.setAttribute('action', formEndpoint);
-  function joinDone() {
-    document.getElementById('joinok').hidden = false;
-    f.querySelector('button[type=submit]').textContent = 'Request sent';
+  // --- small helpers ---------------------------------------------------------
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
   }
-  function joinMailto() {
-    var d = f.elements;
-    var body = 'Name/studio: ' + d.name.value + '\nEmail: ' + d.email.value +
-               '\nSite: ' + d.site.value + '\nDiscipline: ' + d.discipline.value;
-    window.location.href = 'mailto:' + PCA.joinEmail +
-      '?subject=' + encodeURIComponent('Alliance tile request — ' + d.name.value) +
-      '&body=' + encodeURIComponent(body);
-  }
-  if (f) f.addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (!f.checkValidity()) { f.reportValidity(); return; }
-    if (!formEndpoint) { joinMailto(); joinDone(); return; }
-    fetch(formEndpoint, { method: 'POST', body: new FormData(f), headers: { 'Accept': 'application/json' } })
-      .then(function () { joinDone(); })
-      .catch(function () { joinMailto(); });
-  });
+  function byId(id) { return document.getElementById(id); }
 
-  // --- Donation amount selector (visual only; the flat link carries the actual amount).
-  document.querySelectorAll('.amount').forEach(function (b) {
-    b.addEventListener('click', function () {
-      document.querySelectorAll('.amount').forEach(function (x){ x.setAttribute('aria-pressed','false'); });
-      b.setAttribute('aria-pressed','true');
+  // --- the organisation wall -------------------------------------------------
+  // One tile per member organisation, then an invitation slot for every kind
+  // that has no member yet. The wall fills in as organisations join.
+  function renderOrgWall() {
+    var wall = byId('orgwall');
+    if (!wall) return;
+    var typeOf = {};
+    PCA.orgTypes.forEach(function (t) { typeOf[t.slug] = t; });
+    var claimed = {};
+
+    PCA.orgs.forEach(function (org) {
+      var t = typeOf[org.type];
+      if (!t) return;                       // unknown slug: skip rather than render a broken tile
+      claimed[org.type] = true;
+      var a = el('a', 'tile');
+      a.href = org.url || '#join';
+      if (org.url) { a.target = '_blank'; a.rel = 'noopener'; }
+      a.style.backgroundImage = 'url("img/tile-' + t.slug + '.webp")';
+      a.appendChild(el('span', 'k', t.label));
+      a.appendChild(el('h3', null, org.name));
+      a.appendChild(el('span', 'role', org.blurb || t.blurb));
+      var ar = el('span', 'arrow', '↗'); ar.setAttribute('aria-hidden', 'true');
+      a.appendChild(ar);
+      wall.appendChild(a);
     });
-  });
 
-  // --- Donation button: live when PCA.donateUrl is set, inert (and marked disabled) until then.
-  var donateBtn = document.getElementById('donate');
-  if (donateBtn && PCA.donateUrl) { donateBtn.href = PCA.donateUrl; donateBtn.target = '_blank'; donateBtn.rel = 'noopener'; }
-  else if (donateBtn) { donateBtn.setAttribute('aria-disabled', 'true'); donateBtn.addEventListener('click', function (e) { e.preventDefault(); }); }
+    PCA.orgTypes.forEach(function (t) {
+      if (claimed[t.slug]) return;
+      var a = el('a', 'tile open');
+      a.href = '#join';
+      a.style.backgroundImage = 'url("img/tile-' + t.slug + '.webp")';
+      a.appendChild(el('span', 'k', 'Invitation open'));
+      a.appendChild(el('h3', null, t.label));
+      a.appendChild(el('span', 'role', t.blurb));
+      var ar = el('span', 'arrow', '↗'); ar.setAttribute('aria-hidden', 'true');
+      a.appendChild(ar);
+      wall.appendChild(a);
+    });
+  }
 
-  // --- Launch flag: drop the "Working draft" tag once the site is real.
+  // --- artist disciplines + roster -------------------------------------------
+  function renderArtists() {
+    var grid = byId('disciplines');
+    if (grid) {
+      PCA.disciplines.forEach(function (d) {
+        var a = el('a', null);
+        a.href = '#join';
+        var dot = el('span', 'dot');
+        dot.style.background = 'var(--t' + (d.t || 1) + ')';
+        dot.setAttribute('aria-hidden', 'true');
+        a.appendChild(dot);
+        a.appendChild(document.createTextNode(d.label));
+        grid.appendChild(a);
+      });
+    }
+    var roster = byId('roster');
+    if (roster) {
+      PCA.artists.forEach(function (m) {
+        var a = el('a', null);
+        a.href = m.url || '#';
+        if (m.url) { a.target = '_blank'; a.rel = 'noopener'; }
+        a.appendChild(el('span', 'n', m.name));
+        a.appendChild(el('span', 'd', m.discipline));
+        roster.appendChild(a);
+      });
+    }
+  }
+
+  // --- populate the two form dropdowns from the same data as the wall --------
+  function fillSelects() {
+    var kind = byId('ok');
+    if (kind) {
+      PCA.orgTypes.forEach(function (t) {
+        kind.appendChild(new Option(t.label, t.label));
+      });
+      kind.appendChild(new Option('Other', 'Other'));
+    }
+    var disc = byId('ad');
+    if (disc) {
+      PCA.disciplines.forEach(function (d) {
+        disc.appendChild(new Option(d.label, d.label));
+      });
+      disc.appendChild(new Option('Other', 'Other'));
+    }
+  }
+
+  // --- join/apply tabs (WAI-ARIA tab pattern, arrow keys included) -----------
+  function initTabs() {
+    var tabs = [byId('tab-org'), byId('tab-artist')].filter(Boolean);
+    if (tabs.length !== 2) return;
+    function select(i) {
+      tabs.forEach(function (t, j) {
+        var on = i === j;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        byId(t.getAttribute('aria-controls')).hidden = !on;
+      });
+      tabs[i].focus();
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { select(i); });
+      t.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          select((i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length);
+        }
+      });
+    });
+  }
+
+  // --- forms -----------------------------------------------------------------
+  // Both forms POST to one Formspree endpoint, told apart by the hidden `type`
+  // field. With no id configured they fall back to a prefilled mailto, so the
+  // button is never dead pre-launch.
+  var formEndpoint = PCA.formspreeId ? 'https://formspree.io/f/' + PCA.formspreeId : '';
+
+  function wireForm(formId, okId, errId, subject) {
+    var f = byId(formId);
+    if (!f) return;
+    if (formEndpoint) f.setAttribute('action', formEndpoint);
+    var ok = byId(okId), err = byId(errId);
+    var submit = f.querySelector('button[type=submit]');
+
+    function mailtoFallback() {
+      var lines = [];
+      Array.prototype.forEach.call(f.elements, function (i) {
+        if (!i.name || i.name.charAt(0) === '_' || i.type === 'hidden' || !i.value) return;
+        lines.push(i.name + ': ' + i.value);
+      });
+      window.location.href = 'mailto:' + PCA.joinEmail +
+        '?subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(lines.join('\n'));
+    }
+    function succeeded() {
+      ok.hidden = false; err.hidden = true;
+      submit.textContent = 'Sent';
+      submit.disabled = true;
+    }
+
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!f.checkValidity()) { f.reportValidity(); return; }
+      err.hidden = true;
+      if (!formEndpoint) { mailtoFallback(); succeeded(); return; }
+      submit.disabled = true;
+      fetch(formEndpoint, {
+        method: 'POST',
+        body: new FormData(f),
+        headers: { 'Accept': 'application/json' }
+      }).then(function (r) {
+        if (!r.ok) throw new Error('bad status ' + r.status);
+        succeeded();
+      }).catch(function () {
+        // Never swallow it: say so, and offer the route that always works.
+        submit.disabled = false;
+        err.textContent = "That didn't send. Opening your email client instead — or write to " + PCA.joinEmail + ".";
+        err.hidden = false;
+        mailtoFallback();
+      });
+    });
+  }
+
+  // --- donation --------------------------------------------------------------
+  function initDonate() {
+    document.querySelectorAll('.amount').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.amount').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+        b.setAttribute('aria-pressed', 'true');
+      });
+    });
+    var d = byId('donate');
+    if (!d) return;
+    if (PCA.donateUrl) { d.href = PCA.donateUrl; d.target = '_blank'; d.rel = 'noopener'; }
+    else { d.setAttribute('aria-disabled', 'true'); d.addEventListener('click', function (e) { e.preventDefault(); }); }
+  }
+
+  // --- go --------------------------------------------------------------------
+  renderOrgWall();
+  renderArtists();
+  fillSelects();
+  initTabs();
+  wireForm('orgform', 'orgok', 'orgerr', 'PCA — organisation application');
+  wireForm('artistform', 'artistok', 'artisterr', 'PCA — artist join request');
+  initDonate();
   if (PCA.live) { var dt = document.querySelector('.draft-tag'); if (dt) dt.remove(); }
 </script>
 </body>
