@@ -18,14 +18,25 @@ trusting that a rebuild happened.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+if __package__ in (None, ""):
+    # `python3 tools/profiles.py` (the invocation this module's own docstring
+    # and the README document) runs this file as a top-level script, so
+    # `tools` is not yet on sys.path as an importable package the way
+    # `python3 -m tools.profiles` puts it there automatically — the absolute
+    # `tools.*` imports below would otherwise raise ModuleNotFoundError.
+    # Inserting the repo root before those imports run makes both
+    # invocations work identically.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import argparse
 import hashlib
 import json
 import shutil
-import sys
 import tempfile
 from datetime import date
-from pathlib import Path
 
 from tools.mosaic import ROOT, sha256_of
 from tools.profile_images import process_profile_images
@@ -74,15 +85,23 @@ def render_config_blocks(profiles) -> dict[str, str]:
         f"      {{ slug:'{d.slug}', label:{json.dumps(d.label)}, t:{d.t} }}"
         for d in DISCIPLINES
     )
-    artists = ",\n".join(
+    artist_entries = [
         f"      {{ slug:'{p.slug}', name:{json.dumps(p.name)}, "
         f"disciplines:{json.dumps(list(p.disciplines))}, "
         f"url:'/artists/{p.slug}/' }}"
         for p in profiles
+    ]
+    # A genuinely empty roster (DISCIPLINES is never empty, but zero live
+    # artists is a normal, legitimate state — see generate()) renders as the
+    # compact `artists: [],` rather than an empty-looking multi-line array.
+    artists_body = (
+        "    artists: [\n" + ",\n".join(artist_entries) + "\n    ],"
+        if artist_entries
+        else "    artists: [],"
     )
     return {
         "disciplines": f"    disciplines: [\n{disciplines}\n    ],",
-        "artists": f"    artists: [\n{artists}\n    ],",
+        "artists": artists_body,
     }
 
 
@@ -177,7 +196,8 @@ def _remove_stale_profile_dirs(
 
 
 def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
-    """Build every live profile's page and images, and prune stale ones.
+    """Build every live profile's page and images, prune stale ones, and
+    regenerate the taxonomy/roster config blocks in index.html.
 
     Builds entirely into an isolated scratch directory first, and only moves
     anything into `root` once every live profile has succeeded — a missing
@@ -185,6 +205,19 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
     profile's images sitting in `root` with no page or manifest entry for
     them, which is what writing directly into `root` during the build loop
     would do.
+
+    Zero profile files found (a missing or empty profiles/ directory) skips
+    only the *removal* pass — the one step capable of deleting a previously
+    published page — and is reported as a warning, not a fatal error. It
+    used to abort the entire run, but that conflated two unrelated concerns:
+    pruning published pages needs the guard (a mistyped path must never read
+    as "unpublish everyone"), while regenerating index.html's discipline
+    taxonomy does not — that block is a function of DISCIPLINES in
+    tools/profile_schema.py alone, not of whether any artist has joined, so
+    a fresh repo with zero members must still regenerate it and succeed.
+    Distinct from every profile being live:false (a real editorial choice
+    captured in real files), which still publishes and prunes normally —
+    see test_live_false_removes_a_previously_built_page.
     """
     root = Path(root)
     with tempfile.TemporaryDirectory() as scratch_str:
@@ -197,18 +230,18 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
             print(f"FAILED: {exc}")
             return 1
 
-        if not all_profiles:
-            print(
-                f"FAILED: no profile files found in {profiles_dir} — refusing to "
-                "prune every published page. If the source directory really is "
-                "meant to be empty, that needs an explicit opt-in, not a silent "
-                "wipe."
-            )
-            return 1
-
         slugs = {p.slug for p in live}
-        known = _previously_known_slugs(root / ARTIST_MANIFEST)
-        _remove_stale_profile_dirs(root, slugs, known)
+        if all_profiles:
+            known = _previously_known_slugs(root / ARTIST_MANIFEST)
+            _remove_stale_profile_dirs(root, slugs, known)
+        else:
+            print(
+                f"WARNING: no profile files found in {profiles_dir} — skipping "
+                "the prune pass so a mistyped path can never delete a "
+                "previously published page. If this is a fresh repo with no "
+                "members yet, that's expected; index.html's config blocks are "
+                "still regenerated below."
+            )
 
         artists_dir = root / "artists"
         artists_dir.mkdir(parents=True, exist_ok=True)

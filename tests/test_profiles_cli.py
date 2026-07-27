@@ -1,11 +1,15 @@
 # ruff: noqa: S101
 import json
+import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 
 import pytest
 from PIL import Image
 
+from tools.mosaic import ROOT
+from tools.profile_schema import DISCIPLINES
 from tools.profiles import check, generate
 
 from tests.test_profile_schema import write_profile
@@ -186,7 +190,13 @@ def test_generate_refuses_to_prune_when_no_profile_files_exist(workspace):
     misconfigured path, not a deliberate 'unpublish everything.' Distinct
     from every profile being live:false (a real editorial choice captured in
     real files), which must still publish and prune correctly — see
-    test_live_false_removes_a_previously_built_page."""
+    test_live_false_removes_a_previously_built_page.
+
+    Zero profile files is not fatal to the whole run, though — only the
+    *removal* pass is skipped (proven here by the previously published page
+    and its images surviving). The taxonomy/roster rewrite is independent of
+    that guard and still succeeds — see
+    test_generate_with_no_profiles_still_rewrites_config_blocks."""
     profiles, src, root = workspace
     write_profile(profiles)
     assert generate(profiles, src, root, TODAY) == 0
@@ -194,7 +204,7 @@ def test_generate_refuses_to_prune_when_no_profile_files_exist(workspace):
 
     for f in profiles.iterdir():
         f.unlink()
-    assert generate(profiles, src, root, TODAY) == 1
+    assert generate(profiles, src, root, TODAY) == 0
     assert (root / "artists" / "example-artist").exists()
     assert (root / "img" / "artists" / "example-artist").exists()
 
@@ -206,7 +216,7 @@ def test_generate_refuses_to_prune_when_profiles_dir_is_missing(workspace):
     assert (root / "artists" / "example-artist").exists()
 
     missing = profiles.parent / "does-not-exist"
-    assert generate(missing, src, root, TODAY) == 1
+    assert generate(missing, src, root, TODAY) == 0
     assert (root / "artists" / "example-artist").exists()
     assert (root / "img" / "artists" / "example-artist").exists()
 
@@ -297,3 +307,51 @@ def test_generate_updates_index_html(workspace):
 ARTISTS_BLOCK = """// GENERATED artists — tools/profiles.py rewrites this block
     artists: [],
     // END GENERATED artists"""
+
+
+def test_generate_with_no_profiles_still_rewrites_config_blocks(workspace):
+    """The zero-profile-files guard must only skip the removal pass, not the
+    whole run: the discipline taxonomy comes from DISCIPLINES alone (not
+    from whether any artist has joined), and an empty artist roster is a
+    legitimate state, not a reason to abort. Proven against a previously
+    published page to also confirm the guard still does its original job —
+    that page and its images must survive untouched."""
+    profiles, src, root = workspace
+    (root / "index.html").write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    write_profile(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert (root / "artists" / "example-artist").exists()
+    assert (root / "img" / "artists" / "example-artist").exists()
+
+    (profiles / "example-artist.json").unlink()
+    assert generate(profiles, src, root, TODAY) == 0
+
+    # the removal pass is skipped, so the previously published page and its
+    # images are untouched even though no profile files remain
+    assert (root / "artists" / "example-artist").exists()
+    assert (root / "img" / "artists" / "example-artist").exists()
+
+    updated = (root / "index.html").read_text()
+    for d in DISCIPLINES:
+        assert f"slug:'{d.slug}'" in updated
+    assert "artists: [],\n    // END GENERATED artists" in updated
+
+
+def test_documented_script_invocation_does_not_fail_on_import():
+    """tools/profiles.py's own docstring (and the README) document
+    `python3 tools/profiles.py` as the way to run this generator. Absolute
+    `tools.*` imports only resolve automatically under `python3 -m
+    tools.profiles`, where `-m` puts the repo root on sys.path; run as a
+    plain script, `tools` was not otherwise importable and every import
+    below the first raised ModuleNotFoundError before main() ever ran.
+    Proven here with a real subprocess — a sys.path bootstrap that looks
+    right by inspection is not the same as the documented command actually
+    working."""
+    result = subprocess.run(  # noqa: S603 -- fixed argv, no untrusted input
+        [sys.executable, "tools/profiles.py", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert "ModuleNotFoundError" not in result.stderr
+    assert "Traceback" not in result.stderr

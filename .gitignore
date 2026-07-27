@@ -1,5 +1,6 @@
 .DS_Store
 *_preview_*.png
+__pycache__/
 # internal, not for the public repo
 DESIGN.md
 docs/superpowers/
