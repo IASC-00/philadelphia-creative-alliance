@@ -197,24 +197,33 @@ def _process_images(live, src_dir: Path, out_root: Path) -> dict[str, dict]:
     return manifest
 
 
-def _missing_originals(live, src_dir: Path) -> list[str]:
-    """Submitted originals referenced by a live profile that are not on disk.
+def _missing_originals(live, src_dir: Path) -> dict[str, list[str]]:
+    """Submitted originals referenced by a live profile that are not on disk,
+    grouped by slug. Only profiles with at least one missing file appear.
 
-    intake/ is gitignored on purpose, so on a fresh clone or a CI runner this
-    is the whole list and an image rebuild is simply not available — a fact
-    check() reports rather than failing over. Sorted, so the reported example
-    does not depend on profile order.
+    intake/ is gitignored on purpose, so on a fresh clone or a CI runner every
+    profile is in here and an image rebuild is simply not available — a fact
+    check() reports rather than failing over.
+
+    Grouped rather than flat because the decision is per profile. Treating it
+    as one global yes/no meant a single absent original disabled image
+    verification for *every* artist — so a genuinely stale image on a profile
+    whose own originals were all present sailed through with an exit 0 and a
+    NOTE reassuring the operator it was expected. That fires on the authoring
+    machine, where the check is fully capable for every other profile.
     """
     src_dir = Path(src_dir)
-    missing = []
+    missing: dict[str, list[str]] = {}
     for profile in live:
         sources = list(profile.works)
         if profile.portrait:
             sources.append(profile.portrait)
-        for item in sources:
-            if not (src_dir / item.src).exists():
-                missing.append(f"{profile.slug}/{item.src}")
-    return sorted(missing)
+        absent = sorted(
+            item.src for item in sources if not (src_dir / item.src).exists()
+        )
+        if absent:
+            missing[profile.slug] = absent
+    return missing
 
 
 def _build(profiles_dir: Path, src_dir: Path, root: Path, today: date):
@@ -327,6 +336,10 @@ def _remove_stale_profile_dirs(
         images = root / "img" / "artists" / existing.name
         if images.exists() and not images.is_symlink():
             shutil.rmtree(images)
+        # Also any staging directory a previously interrupted swap left behind
+        # for this slug: it holds the same member's artwork and is served just
+        # as publicly as the real directory.
+        _remove_path(_staging_path(images))
         print(f"  removed artists/{existing.name}")
 
 
@@ -348,12 +361,34 @@ def _swap_into_place(built: Path, dest: Path) -> None:
     directory is still untouched. Only once the replacement is fully present
     on the destination filesystem is the old one removed, and the final step
     is a same-filesystem rename.
+
+    A failed copy is cleaned up before the exception propagates. A partial
+    `.<slug>.incoming` left under img/artists/ is *published* — img/ is not
+    gitignored — so a member taken down later would keep their artwork served
+    from the staging path indefinitely, with --check green, because neither
+    the prune nor the orphan guard used to look at it. For a project whose
+    whole premise is that only consented work is published, that is the
+    failure that matters most.
     """
-    staging = dest.parent / f".{dest.name}.incoming"
+    staging = _staging_path(dest)
     _remove_path(staging)
-    shutil.move(str(built), str(staging))
+    try:
+        shutil.move(str(built), str(staging))
+    except BaseException:
+        _remove_path(staging)
+        raise
     _remove_path(dest)
     staging.rename(dest)
+
+
+def _staging_path(dest: Path) -> Path:
+    """The sibling hidden path `_swap_into_place` copies into before swapping.
+
+    A slug can never collide with this name: the slug regex admits only
+    lowercase letters, digits and single hyphens, so nothing can start with
+    a dot.
+    """
+    return dest.parent / f".{dest.name}.incoming"
 
 
 def _remove_path(target: Path) -> None:
@@ -425,9 +460,25 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
 
         slugs = {p.slug for p in live}
         prune = bool(all_profiles)
-        # Captured before the manifest is rewritten below, because the prune
-        # that consumes it now runs after that write.
         known = _previously_known_slugs(committed) if prune else set()
+
+        # Resolve index.html completely before anything is written. A missing
+        # marker is the one realistic raise in this function, and it used to
+        # land between the manifest write and the prune — where it is not
+        # merely a failed run but an unrecoverable one. The manifest written
+        # moments earlier no longer lists the member being taken down, so the
+        # *next* run's `known` no longer contains them either and the prune
+        # skips them on every future run: their page and photos stay published
+        # forever, exit 0. Failing here instead leaves the tree exactly as it
+        # was, so re-running after fixing index.html completes the takedown.
+        index = root / "index.html"
+        rewritten_index = None
+        if index.exists():
+            html = index.read_text(encoding="utf-8")
+            for marker, body in render_config_blocks(live).items():
+                html = rewrite_block(html, marker, body)
+            rewritten_index = html
+
         if not prune:
             manifest = {**_artefacts(committed), **manifest}
             print(
@@ -462,6 +513,21 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
             manifest[f"{slug}/index.html"] = {"sha256": _sha256_of_text(html)}
             print(f"  artists/{slug}/index.html")
 
+        if rewritten_index is not None:
+            index.write_text(rewritten_index, encoding="utf-8")
+            print("  index.html config blocks updated")
+
+        if prune:
+            _remove_stale_profile_dirs(root, slugs, known)
+
+        # The manifest is written LAST, so it is the commit point for the whole
+        # run. It is the record `known` is rebuilt from next time, so anything
+        # that raises before this line must leave the *old* manifest intact —
+        # otherwise a half-finished run silently narrows what the prune is ever
+        # allowed to touch again. Dying between the prune and here is the safe
+        # direction: the manifest still lists files that are gone, --check
+        # reports them missing, and re-running fixes it.
+        #
         # `_meta.generated` is what check() re-renders against, so it must
         # describe the bytes actually on disk. When this run reproduced the
         # committed artefacts exactly, the recorded date still reproduces
@@ -477,45 +543,59 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
         )
         print(f"\n  {len(pages)} profiles, {len(manifest)} manifest entries")
 
-        index = root / "index.html"
-        if index.exists():
-            html = index.read_text(encoding="utf-8")
-            for marker, body in render_config_blocks(live).items():
-                html = rewrite_block(html, marker, body)
-            index.write_text(html, encoding="utf-8")
-            print("  index.html config blocks updated")
-
-        if prune:
-            _remove_stale_profile_dirs(root, slugs, known)
-
         return 0
 
 
 def _orphaned_page_failures(root: Path, committed: dict) -> list[str]:
-    """Pages published under artists/ that no manifest entry accounts for.
+    """Anything published that no manifest entry accounts for — a page under
+    artists/, or an image directory under img/artists/.
 
     Without this, deleting a member's record — the natural response to
     "please remove me" — could pass green: the prune is skipped when no
     profile files remain, so the page and photos stay on disk while nothing
-    in the manifest still refers to them. Anchored on index.html rather than
-    on the directory alone, so a hand-made artists/_shared/ (which the prune
-    is likewise forbidden to touch) is not reported as an orphan.
+    in the manifest still refers to them.
+
+    The page half is anchored on index.html rather than on the directory
+    alone, so a hand-made artists/_shared/ (which the prune is likewise
+    forbidden to touch) is not reported as an orphan.
+
+    The image half exists because removing an orphaned *page* by hand — which
+    is what this guard tells the operator to do — leaves the photos published
+    at img/artists/<slug>/ and the gate green, so the de-listed member's work
+    is still being served. It also catches `.<slug>.incoming` staging
+    directories left by an interrupted swap, which are published the same way.
     """
-    artists_dir = Path(root) / "artists"
-    if not artists_dir.is_dir():
-        return []
+    root = Path(root)
     failures = []
-    for entry in sorted(artists_dir.iterdir()):
-        if entry.is_symlink() or not entry.is_dir():
-            continue
-        if not (entry / "index.html").is_file():
-            continue
-        if f"{entry.name}/index.html" not in committed:
+
+    artists_dir = root / "artists"
+    if artists_dir.is_dir():
+        for entry in sorted(artists_dir.iterdir()):
+            if entry.is_symlink() or not entry.is_dir():
+                continue
+            if not (entry / "index.html").is_file():
+                continue
+            if f"{entry.name}/index.html" not in committed:
+                failures.append(
+                    f"artists/{entry.name}/index.html: published but absent from "
+                    'the manifest — an orphaned page. Set "live": false on that '
+                    "profile and re-run the generator to take the member down "
+                    "properly; that removes the page and the images together."
+                )
+
+    images_root = root / "img" / "artists"
+    if images_root.is_dir():
+        accounted = {key.split("/", 1)[0] for key in committed if "/" in key}
+        for entry in sorted(images_root.iterdir()):
+            if entry.is_symlink() or not entry.is_dir():
+                continue
+            if entry.name in accounted:
+                continue
             failures.append(
-                f"artists/{entry.name}/index.html: published but absent from the "
-                'manifest — an orphaned page. Set "live": false on that profile '
-                "and re-run the generator to take the member down properly, or "
-                "remove the directory by hand."
+                f"img/artists/{entry.name}/: published images absent from the "
+                "manifest — an orphaned image directory. These are still being "
+                'served. Set "live": false on that profile and re-run the '
+                "generator, which removes them."
             )
     return failures
 
@@ -603,26 +683,36 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
         for slug, html in pages.items()
     }
 
+    # Per profile, not globally: a profile whose own originals are all present
+    # gets its images rebuilt and fully compared even when another profile's
+    # are missing.
     absent = _missing_originals(live, src_dir)
+    buildable = [p for p in live if p.slug not in absent]
     if absent:
+        example = f"{sorted(absent)[0]}/{absent[sorted(absent)[0]][0]}"
         print(
-            f"NOTE: {len(absent)} submitted original(s) are not in {src_dir} "
-            f"(e.g. {absent[0]}) — intake/ is gitignored, so this is expected "
-            "on a fresh clone or a CI runner. Images are compared against the "
-            "committed manifest only; page HTML is still rebuilt and compared "
-            "in full."
+            f"NOTE: {sum(len(v) for v in absent.values())} submitted original(s) "
+            f"for {len(absent)} of {len(live)} profile(s) are not in {src_dir} "
+            f"(e.g. {example}) — intake/ is gitignored, so this is expected on a "
+            "fresh clone or a CI runner. Images for those profiles "
+            f"({', '.join(sorted(absent))}) are compared against the committed "
+            "manifest only. Page HTML is rebuilt and compared in full for every "
+            "profile, and images are rebuilt in full for the rest."
         )
-    else:
+    if buildable:
         with tempfile.TemporaryDirectory() as scratch:
             try:
                 fresh.update(
-                    _process_images(live, src_dir, Path(scratch) / "img" / "artists")
+                    _process_images(
+                        buildable, src_dir, Path(scratch) / "img" / "artists"
+                    )
                 )
             except (ProfileError, FileNotFoundError) as exc:
                 print(f"FAILED: {exc}")
                 return 1
 
     live_slugs = {p.slug for p in live}
+    rebuilt_slugs = {p.slug for p in buildable}
     try:
         failures = []
 
@@ -642,9 +732,10 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
                 )
 
         for key in sorted(image_keys):
-            if absent:
-                # No rebuild to compare against; slug-level presence is still
-                # knowable from the profiles, which are committed.
+            if key.split("/", 1)[0] not in rebuilt_slugs:
+                # This profile's originals are absent, so there is no rebuild
+                # to compare against; slug-level presence is still knowable
+                # from the profiles, which are committed.
                 if key.split("/", 1)[0] not in live_slugs:
                     failures.append(
                         f"{key}: in the committed manifest but no longer produced"

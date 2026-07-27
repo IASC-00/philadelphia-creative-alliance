@@ -155,6 +155,43 @@ def test_portrait_src_outside_intake_is_an_error(tmp_path):
         load_profile(write_profile(tmp_path, portrait=portrait))
 
 
+@pytest.mark.parametrize(
+    "src",
+    [
+        "..\\originals\\piece.jpg",
+        "C:\\photos\\piece.jpg",
+        "\\\\server\\share\\piece.jpg",
+        "C:piece.jpg",
+    ],
+)
+def test_windows_style_image_src_is_an_error(tmp_path, src):
+    """On POSIX, Path(r"..\\originals\\piece.jpg").name is the whole string, so
+    the separator check alone lets a pasted Windows path through. It then
+    writes a hidden dotfile artefact and emits an <img src> that the WHATWG
+    URL parser resolves with backslash-as-slash — landing outside the artist's
+    directory and 404ing for every visitor, with --check green."""
+    works = [{"src": src, "alt": "A pasted Windows path."}]
+    with pytest.raises(ProfileError, match="bare filename"):
+        load_profile(write_profile(tmp_path, works=works))
+
+
+@pytest.mark.parametrize(
+    "work,expected",
+    [
+        ({"src": 123, "alt": "ok"}, "src must be a string"),
+        ({"src": "w.jpg", "alt": 5}, "alt must be a string"),
+        ({"src": {"nested": True}, "alt": "ok"}, "src must be a string"),
+    ],
+)
+def test_non_string_image_fields_raise_profile_error(tmp_path, work, expected):
+    """A JSON number or object here used to raise TypeError/AttributeError out
+    of this module. Callers that only catch ProfileError — tools/profiles.py's
+    check() — turned that into an unhandled traceback rather than a named
+    validation failure."""
+    with pytest.raises(ProfileError, match=expected):
+        load_profile(write_profile(tmp_path, works=[work]))
+
+
 def test_missing_consent_flag_is_an_error(tmp_path):
     consent = {"listed": True, "images": False, "date": "2026-07-26"}
     with pytest.raises(ProfileError, match="consent"):

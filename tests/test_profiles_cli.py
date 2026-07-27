@@ -417,6 +417,193 @@ def test_a_failure_writing_index_html_leaves_the_published_page_in_place(workspa
     assert (root / "artists" / "first" / "index.html").exists()
 
 
+def _two_members(profiles, src, root):
+    (root / "index.html").write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    write_profile(profiles, slug="alpha", name="Alpha Artist")
+    write_profile(profiles, slug="beta", name="Beta Artist")
+    assert generate(profiles, src, root, TODAY) == 0
+    return root / "index.html"
+
+
+def _take_beta_down(profiles):
+    data = json.loads((profiles / "beta.json").read_text())
+    data["live"] = False
+    (profiles / "beta.json").write_text(json.dumps(data))
+
+
+def test_a_marker_failure_writes_nothing_at_all(workspace):
+    """index.html is resolved before anything is written. A missing marker is
+    the one realistic raise in generate(), and it used to land *between* the
+    manifest write and the prune."""
+    profiles, src, root = workspace
+    index = _two_members(profiles, src, root)
+    manifest_path = root / "img" / "artists" / "manifest.json"
+    before = manifest_path.read_bytes()
+
+    _take_beta_down(profiles)
+    index.write_text(index.read_text().replace("// END GENERATED artists", ""))
+    with pytest.raises(ValueError, match="marker"):
+        generate(profiles, src, root, TODAY)
+
+    assert manifest_path.read_bytes() == before
+
+
+def test_a_marker_failure_does_not_strand_the_takedown_forever(workspace):
+    """The manifest is what `known` is rebuilt from next run. Writing it
+    before the prune meant a raise in between permanently removed the member
+    from the set the prune is ever allowed to touch: their page and photos
+    stayed published through every future clean run, exit 0."""
+    profiles, src, root = workspace
+    index = _two_members(profiles, src, root)
+    good_index = index.read_text()
+
+    _take_beta_down(profiles)
+    index.write_text(good_index.replace("// END GENERATED artists", ""))
+    with pytest.raises(ValueError, match="marker"):
+        generate(profiles, src, root, TODAY)
+
+    # the operator fixes index.html and re-runs; the takedown must complete
+    index.write_text(good_index)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not (root / "artists" / "beta").exists()
+    assert not (root / "img" / "artists" / "beta").exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_a_failure_inside_the_prune_does_not_strand_the_takedown(
+    workspace, monkeypatch
+):
+    """The manifest is written last, so it is the run's commit point. If the
+    prune itself dies partway — a permissions change, a full disk — the old
+    manifest must survive intact, because it is what `known` is rebuilt from
+    next run. Writing it first meant a prune that failed once could never be
+    retried: the member was already gone from `known`."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    _take_beta_down(profiles)
+
+    real_rmtree = profiles_module.shutil.rmtree
+
+    def denied(path, *args, **kwargs):
+        # Only the prune's own removal fails; the image swap earlier in the
+        # run must still succeed, or this never reaches the prune at all.
+        if Path(path).name == "beta":
+            raise PermissionError("cannot remove")
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(profiles_module.shutil, "rmtree", denied)
+    with pytest.raises(PermissionError):
+        generate(profiles, src, root, TODAY)
+    monkeypatch.undo()
+
+    # the obstruction clears and the operator re-runs; the takedown completes
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not (root / "artists" / "beta").exists()
+    assert not (root / "img" / "artists" / "beta").exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_a_failed_swap_leaves_no_staging_directory_behind(tmp_path, monkeypatch):
+    """A partial .<slug>.incoming under img/artists/ is published — img/ is
+    not gitignored — so it must not outlive the failure that created it."""
+    built = tmp_path / "scratch" / "artist"
+    built.mkdir(parents=True)
+    (built / "new.webp").write_bytes(b"new")
+    dest = tmp_path / "live" / "artist"
+    dest.mkdir(parents=True)
+    (dest / "old.webp").write_bytes(b"old")
+
+    def half_copied(_src, dst, *_a, **_k):
+        Path(dst).mkdir(parents=True, exist_ok=True)
+        (Path(dst) / "partial.webp").write_bytes(b"half")
+        raise OSError("no space left on device")
+
+    monkeypatch.setattr(profiles_module.shutil, "move", half_copied)
+    with pytest.raises(OSError, match="no space"):
+        _swap_into_place(built, dest)
+
+    assert (dest / "old.webp").read_bytes() == b"old"
+    assert [p.name for p in sorted(dest.parent.iterdir())] == ["artist"]
+
+
+def test_the_prune_removes_a_leftover_staging_directory(workspace):
+    """Staging was only ever cleared by a later swap of the same slug, so a
+    member taken down after an interrupted build kept their artwork served
+    from img/artists/.<slug>.incoming/ indefinitely."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    images = root / "img" / "artists"
+    leftover = images / ".beta.incoming"
+    leftover.mkdir()
+    (leftover / "work-01.webp").write_bytes(
+        (images / "beta" / "work-01.webp").read_bytes()
+    )
+
+    _take_beta_down(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+
+    assert not leftover.exists()
+    assert [p for p in images.rglob("*.webp") if p.name.startswith("beta")] == []
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_check_reports_an_orphaned_image_directory(workspace, capsys):
+    """Removing an orphaned page by hand leaves the photos published and the
+    gate green — so the de-listed member's work is still being served."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _strand_a_page(profiles, root)
+    shutil.rmtree(root / "artists" / "example-artist")  # the page, removed by hand
+    capsys.readouterr()
+
+    assert check(profiles, src, root, TODAY) == 1
+    out = capsys.readouterr().out
+    assert "img/artists/example-artist/" in out
+    assert "orphaned image directory" in out
+
+
+def test_one_profiles_missing_originals_do_not_disable_image_checks_for_another(
+    workspace,
+):
+    """`absent` used to be all-or-nothing, so a single missing original made
+    --check skip image verification for *every* artist — on the authoring
+    machine, where it is fully capable for all the others, while printing a
+    NOTE reassuring the operator it was expected.
+
+    The drift here is an edited *original* that was never regenerated. That is
+    detectable only by rebuilding: the committed WebP still matches its own
+    manifest hash, so the tamper pass sees nothing wrong."""
+    profiles, src, root = workspace
+    Image.new("RGB", (1200, 900), (10, 120, 60)).save(src / "beta-only.jpg")
+    (root / "index.html").write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    write_profile(
+        profiles,
+        slug="alpha",
+        name="Alpha Artist",
+        portrait=None,
+        works=[{"src": "work-01.jpg", "alt": "Alpha's work."}],
+    )
+    write_profile(
+        profiles,
+        slug="beta",
+        name="Beta Artist",
+        portrait=None,
+        works=[{"src": "beta-only.jpg", "alt": "Beta's work."}],
+    )
+    assert generate(profiles, src, root, TODAY) == 0
+    assert check(profiles, src, root, TODAY) == 0
+
+    # alpha re-crops their original and forgets to regenerate
+    Image.new("RGB", (2000, 1500), (200, 30, 30)).save(src / "work-01.jpg")
+    assert check(profiles, src, root, TODAY) == 1
+
+    # beta's original is simply not on this machine — alpha's staleness must
+    # still be caught, since alpha's own original is right here
+    (src / "beta-only.jpg").unlink()
+    assert check(profiles, src, root, TODAY) == 1
+
+
 # --- --check away from the authoring machine -------------------------------
 #
 # intake/ is gitignored on purpose: only the processed WebP is published. So
@@ -451,7 +638,7 @@ def test_check_says_so_when_it_cannot_rebuild_the_images(workspace, capsys):
     check(profiles, src, root, TODAY)
     out = capsys.readouterr().out
     assert "intake/ is gitignored" in out
-    assert "page HTML is still rebuilt and compared in full" in out
+    assert "Page HTML is rebuilt and compared in full for every profile" in out
 
 
 def test_check_still_catches_text_staleness_with_no_intake(workspace):

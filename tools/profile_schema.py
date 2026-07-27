@@ -120,12 +120,29 @@ def _image(raw: dict, where: str) -> Work:
     homepage; this is the same class of value and needs the same treatment.
     Plausible by operator accident, not only by malice: these paths are
     transcribed by hand alongside the rest of the profile.
+
+    Backslash and colon are rejected explicitly rather than left to
+    `Path`. On POSIX `Path(r"..\\originals\\piece.jpg").name` is the *whole
+    string*, so a pasted Windows path sails through the separator check —
+    then writes a hidden dotfile artefact, and emits an <img src> that the
+    WHATWG URL parser resolves with backslash-as-slash, landing outside the
+    artist's own directory and 404ing for every visitor while --check stays
+    green. Operators do paste Windows paths.
+
+    Types are checked before use: a JSON number or object here otherwise
+    raised TypeError/AttributeError out of this module, which callers that
+    only catch ProfileError (tools/profiles.py's check()) turn into an
+    unhandled traceback rather than a named validation failure.
     """
     src = raw.get("src", "")
     alt = raw.get("alt", "")
     if not src:
         raise ProfileError(f"{where}: missing src")
-    if src in (".", "..") or Path(src).name != src:
+    if not isinstance(src, str):
+        raise ProfileError(f"{where}: src must be a string, got {type(src).__name__}")
+    if not isinstance(alt, str):
+        raise ProfileError(f"{where}: alt must be a string, got {type(alt).__name__}")
+    if src in (".", "..") or Path(src).name != src or "\\" in src or ":" in src:
         raise ProfileError(
             f"{where}: src {src!r} must be a bare filename inside intake/, "
             "with no directory part"
