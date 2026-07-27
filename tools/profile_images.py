@@ -34,6 +34,23 @@ def resize_to_long_edge(img: Image.Image, long_edge: int) -> Image.Image:
     return img.resize(size, Image.LANCZOS)
 
 
+def _normalize_mode(img: Image.Image) -> Image.Image:
+    """Preserve a source's real alpha channel; flatten everything else to RGB.
+
+    WebP supports alpha natively and `save_asset` already targets WebP, so a
+    transparent background should ship as the artist made it. A blanket
+    `.convert("RGB")` instead discards the alpha channel outright — and many
+    PNG exporters store black (or otherwise arbitrary) RGB under a fully
+    transparent pixel, so that discard reads as a solid opaque background
+    where there should be nothing.
+    """
+    if img.mode in ("RGBA", "LA"):
+        return img.convert("RGBA")
+    if img.mode == "P" and "transparency" in img.info:
+        return img.convert("RGBA")
+    return img.convert("RGB")
+
+
 def fallback_tile(profile: Profile) -> Image.Image:
     """A deterministic mosaic tile for profiles with no submitted imagery.
 
@@ -79,7 +96,7 @@ def process_profile_images(
         if not source.exists():
             raise FileNotFoundError(f"{profile.slug}: image not found: {item.src}")
         with Image.open(source) as opened:
-            resized = resize_to_long_edge(opened.convert("RGB"), LONG_EDGE)
+            resized = resize_to_long_edge(_normalize_mode(opened), LONG_EDGE)
         target = out_dir / f"{Path(item.src).stem}.webp"
         save_asset(resized, target)
         entries[f"{profile.slug}/{target.name}"] = _manifest_entry(target, resized)

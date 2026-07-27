@@ -10,7 +10,7 @@ from tools.profile_images import (
 )
 from tools.profile_schema import load_profile
 
-from tests.test_profile_schema import VALID, write_profile
+from tests.test_profile_schema import write_profile
 
 
 @pytest.fixture
@@ -53,6 +53,44 @@ def test_missing_source_image_is_an_error(tmp_path, src_dir):
     profile = load_profile(write_profile(tmp_path, works=works))
     with pytest.raises(FileNotFoundError, match="absent.jpg"):
         process_profile_images(profile, src_dir, tmp_path / "out")
+
+
+def test_process_profile_images_falls_back_to_tile_when_no_imagery_at_all(tmp_path):
+    profile = load_profile(write_profile(tmp_path, works=[], portrait=None))
+    entries = process_profile_images(profile, tmp_path, tmp_path / "out")
+    assert list(entries.keys()) == ["example-artist/tile.webp"]
+    assert (tmp_path / "out" / "example-artist" / "tile.webp").exists()
+
+
+def test_transparent_source_keeps_its_alpha_channel(tmp_path):
+    d = tmp_path / "src2"
+    d.mkdir()
+    Image.new("RGBA", (800, 600), (200, 40, 30, 0)).save(d / "layer.png")
+    works = [{"src": "layer.png", "alt": "A layered piece."}]
+    profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
+    process_profile_images(profile, d, tmp_path / "out")
+
+    target = tmp_path / "out" / "example-artist" / "layer.webp"
+    with Image.open(target) as saved:
+        saved.load()
+        assert saved.mode == "RGBA"
+        pixel = saved.getpixel((0, 0))
+        assert pixel != (0, 0, 0, 255)  # not flattened to an opaque black background
+        assert pixel[3] < 255  # transparency survived, it isn't fully opaque
+
+
+def test_grayscale_source_still_converts_to_rgb(tmp_path):
+    d = tmp_path / "src3"
+    d.mkdir()
+    Image.new("L", (800, 600), 128).save(d / "sketch.jpg")
+    works = [{"src": "sketch.jpg", "alt": "A pencil sketch."}]
+    profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
+    process_profile_images(profile, d, tmp_path / "out")
+
+    target = tmp_path / "out" / "example-artist" / "sketch.webp"
+    with Image.open(target) as saved:
+        saved.load()
+        assert saved.mode == "RGB"
 
 
 def test_fallback_tile_is_deterministic_per_slug(tmp_path):
