@@ -1,5 +1,6 @@
 # ruff: noqa: S101
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,8 @@ from tools.profile_schema import (
     DISCIPLINES,
     DISCIPLINE_SLUGS,
     ProfileError,
+    STALE_AFTER_DAYS,
+    availability_is_current,
     discipline_by_slug,
     load_all,
     load_profile,
@@ -253,11 +256,7 @@ def test_unsafe_or_malformed_explicit_slug_is_an_error(tmp_path, slug):
         load_all(tmp_path)
 
 
-# Availability staleness tests
-
-from datetime import date
-
-from tools.profile_schema import STALE_AFTER_DAYS, availability_is_current
+# --- availability staleness -------------------------------------------------
 
 TODAY = date(2026, 7, 26)
 

@@ -143,7 +143,10 @@ def _image(raw: dict, where: str) -> Work:
 
 
 def load_profile(path: Path) -> Profile:
-    data = json.loads(Path(path).read_text())
+    # Explicit encoding, never the platform default: artist names are the
+    # field most likely to carry non-ASCII, and an implicit decode produces
+    # mojibake under a non-UTF-8 locale instead of failing loudly.
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
 
     name = _require(data, "name")
     tagline = _require(data, "tagline")
