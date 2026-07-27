@@ -1,5 +1,6 @@
 # ruff: noqa: S101
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -425,10 +426,14 @@ def _two_members(profiles, src, root):
     return root / "index.html"
 
 
-def _take_beta_down(profiles):
-    data = json.loads((profiles / "beta.json").read_text())
+def _take_down(profiles, slug):
+    data = json.loads((profiles / f"{slug}.json").read_text())
     data["live"] = False
-    (profiles / "beta.json").write_text(json.dumps(data))
+    (profiles / f"{slug}.json").write_text(json.dumps(data))
+
+
+def _take_beta_down(profiles):
+    _take_down(profiles, "beta")
 
 
 def test_a_marker_failure_writes_nothing_at_all(workspace):
@@ -561,6 +566,502 @@ def test_check_reports_an_orphaned_image_directory(workspace, capsys):
     out = capsys.readouterr().out
     assert "img/artists/example-artist/" in out
     assert "orphaned image directory" in out
+
+
+# --- the prune reaches a member's images even without their page ------------
+#
+# The prune used to walk artists/ and key everything else off the page
+# directory it found there, so once that directory was gone — removed by hand
+# on this tool's own advice, by a prune that failed after it, or by a SIGKILL
+# mid-run — the same member's photographs were unreachable forever. Every
+# route the tool printed was a no-op and only `rm -rf` cleared the gate. It is
+# driven by the manifest now: what this tool published is what it can prune.
+
+
+def test_a_hand_removed_page_does_not_strand_the_members_images(workspace):
+    """The de-listing that matters: a member is taken down with
+    `live: false` while their page directory is already gone. Their images
+    must still come down on the next run."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    images = root / "img" / "artists" / "beta"
+    assert images.exists()
+
+    _take_beta_down(profiles)
+    shutil.rmtree(root / "artists" / "beta")  # the page, removed by hand
+
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not images.exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_the_documented_hand_removal_converges_on_the_next_run(workspace):
+    """The reviewer's route A, end to end: the operator deletes the record,
+    the generator warns and skips the prune, they remove the page by hand as
+    the warning used to suggest, and a later run — here because another member
+    joins — must take the photographs down rather than leave them served with
+    the gate red and no working remedy."""
+    profiles, src, root = workspace
+    write_profile(profiles, slug="beta", name="Beta Artist")
+    assert generate(profiles, src, root, TODAY) == 0
+
+    (profiles / "beta.json").unlink()
+    assert generate(profiles, src, root, TODAY) == 0  # warns, skips the prune
+    shutil.rmtree(root / "artists" / "beta")
+
+    write_profile(profiles, slug="alpha", name="Alpha Artist")
+    assert generate(profiles, src, root, TODAY) == 0
+
+    assert not (root / "img" / "artists" / "beta").exists()
+    assert [
+        p for p in (root / "img" / "artists").rglob("*.webp") if "beta" in str(p)
+    ] == []
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_a_prune_failure_on_the_images_leaves_the_page_behind(workspace, monkeypatch):
+    """Images before the page, so a failure between the two halves leaves the
+    recoverable half. Losing the page first left photographs with no page and
+    (before the prune read the manifest) no way to reach them again.
+
+    The patch is narrowed to the exact rmtree call being broken — patching
+    rmtree by directory *name* matches artists/beta first and so never
+    exercises this window at all."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    _take_beta_down(profiles)
+
+    target = root / "img" / "artists" / "beta"
+    real_rmtree = profiles_module.shutil.rmtree
+
+    def denied(path, *args, **kwargs):
+        if Path(path) == target:
+            raise PermissionError("cannot remove")
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(profiles_module.shutil, "rmtree", denied)
+    with pytest.raises(PermissionError):
+        generate(profiles, src, root, TODAY)
+    monkeypatch.undo()
+
+    assert (root / "artists" / "beta" / "index.html").exists()
+
+    # the obstruction clears and the operator re-runs; the takedown completes
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not (root / "artists" / "beta").exists()
+    assert not target.exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_a_prune_failure_on_one_slug_does_not_block_another(workspace, monkeypatch):
+    """One member's unremovable directory must not keep a second member
+    published: the failure is reported, the loop continues, and the run still
+    fails loudly afterwards so the manifest keeps listing what is still on
+    disk."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    _take_down(profiles, "alpha")
+    _take_down(profiles, "beta")
+
+    stuck = root / "img" / "artists" / "alpha"
+    real_rmtree = profiles_module.shutil.rmtree
+
+    def denied(path, *args, **kwargs):
+        if Path(path) == stuck:
+            raise PermissionError("cannot remove")
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(profiles_module.shutil, "rmtree", denied)
+    with pytest.raises(PermissionError):
+        generate(profiles, src, root, TODAY)
+    monkeypatch.undo()
+
+    assert not (root / "artists" / "beta").exists()
+    assert not (root / "img" / "artists" / "beta").exists()
+    assert (root / "artists" / "alpha" / "index.html").exists()
+
+    assert generate(profiles, src, root, TODAY) == 0
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_the_prune_removes_leftover_staging_when_the_page_is_gone(workspace):
+    """Staging is reached through the same manifest entry as the images, so a
+    `.<slug>.incoming` that appears (or survives a SIGKILL) after the page is
+    gone is still removed."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    images = root / "img" / "artists"
+    leftover = images / ".beta.incoming"
+    leftover.mkdir()
+    (leftover / "work-01.webp").write_bytes(
+        (images / "beta" / "work-01.webp").read_bytes()
+    )
+
+    _take_beta_down(profiles)
+    shutil.rmtree(root / "artists" / "beta")
+
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not leftover.exists()
+    assert not (images / "beta").exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_a_non_directory_where_the_images_belong_fails_loudly(workspace, capsys):
+    """The prune must never treat "I refused to remove this" as "it was
+    already gone". Reporting nothing here would be followed by a manifest
+    write that no longer names the member — and then no later run could reach
+    them, while their bytes stayed served and --check passed green.
+
+    Raising instead leaves the committed manifest intact and the gate red,
+    which is what makes the state recoverable."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    images = root / "img" / "artists" / "beta"
+    shutil.rmtree(images)
+    images.write_bytes(b"served bytes")
+    _take_beta_down(profiles)
+
+    with pytest.raises(OSError, match="(?i)not a directory"):
+        generate(profiles, src, root, TODAY)
+
+    manifest = json.loads((root / "img" / "artists" / "manifest.json").read_text())
+    assert any(key.startswith("beta/") for key in manifest)
+    assert (root / "artists" / "beta" / "index.html").exists()
+    assert check(profiles, src, root, TODAY) == 1
+
+    # the operator clears the obstruction and re-runs; the takedown completes
+    images.unlink()
+    capsys.readouterr()
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not (root / "artists" / "beta").exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_a_symlink_where_the_images_belong_fails_loudly(workspace, tmp_path):
+    """The same silent forgetting, reached through a symlink. `shutil.rmtree`
+    raises on one, so the prune has always refused — but refusing quietly and
+    then dropping the slug from the manifest is how a member stays served
+    with the gate green forever."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    images = root / "img" / "artists" / "beta"
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "work-01.webp").write_bytes((images / "work-01.webp").read_bytes())
+    shutil.rmtree(images)
+    images.symlink_to(elsewhere, target_is_directory=True)
+    _take_beta_down(profiles)
+
+    with pytest.raises(OSError, match="symlink"):
+        generate(profiles, src, root, TODAY)
+
+    manifest = json.loads((root / "img" / "artists" / "manifest.json").read_text())
+    assert any(key.startswith("beta/") for key in manifest)
+    assert images.is_symlink()
+    assert (elsewhere / "work-01.webp").exists()
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_a_partial_prune_still_reports_what_it_removed(workspace, capsys, monkeypatch):
+    """A removal that did happen is reported as having happened, even when a
+    later step for the same slug fails."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    images = root / "img" / "artists"
+    leftover = images / ".beta.incoming"
+    leftover.mkdir()
+    (leftover / "work-01.webp").write_bytes(
+        (images / "beta" / "work-01.webp").read_bytes()
+    )
+    _take_beta_down(profiles)
+
+    real_rmtree = profiles_module.shutil.rmtree
+
+    def denied(path, *args, **kwargs):
+        if Path(path) == leftover:
+            raise PermissionError("cannot remove")
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(profiles_module.shutil, "rmtree", denied)
+    capsys.readouterr()
+    with pytest.raises(PermissionError):
+        generate(profiles, src, root, TODAY)
+    out = capsys.readouterr().out
+    monkeypatch.undo()
+
+    assert "removed img/artists/beta" in out
+    assert "FAILED to remove beta" in out
+    # the page is the half a re-run rebuilds, so it must be the half left
+    assert (root / "artists" / "beta" / "index.html").exists()
+
+
+def test_the_prune_never_acts_on_a_manifest_key_that_escapes_the_tree(workspace):
+    """The slugs the prune may remove now come from manifest *text* joined
+    onto root, rather than from matching what is already in artists/. A
+    hand-edited or corrupted manifest must not be able to name `../..`, so the
+    same slug regex tools/profile_schema.py enforces on load is applied here
+    before anything is joined or removed."""
+    profiles, src, root = workspace
+    write_profile(profiles)  # a live profile, so the prune runs at all
+    assert generate(profiles, src, root, TODAY) == 0
+
+    outsider = root.parent / "outside"
+    outsider.mkdir()
+    (outsider / "keep.txt").write_text("keep me")
+
+    manifest_path = root / "img" / "artists" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["../../outside/index.html"] = {"sha256": "0" * 64}
+    manifest_path.write_text(json.dumps(manifest))
+
+    assert generate(profiles, src, root, TODAY) == 0
+    assert (outsider / "keep.txt").read_text() == "keep me"
+
+
+def test_an_unusable_manifest_key_is_reported_not_dropped_in_silence(workspace, capsys):
+    """Skipping the key is the right thing to do with the filesystem; doing it
+    without a word is not, since the manifest this run writes will no longer
+    contain it."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+    manifest_path = root / "img" / "artists" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["../../outside/index.html"] = {"sha256": "0" * 64}
+    manifest_path.write_text(json.dumps(manifest))
+    capsys.readouterr()
+
+    assert generate(profiles, src, root, TODAY) == 0
+    assert "ignored manifest entry" in capsys.readouterr().out
+
+
+def test_restoring_a_deleted_record_as_not_live_completes_the_takedown(workspace):
+    """What the skipped-prune warning now names as the way to finish, proven
+    rather than asserted: with no profile files left the prune is skipped by
+    design, and restoring the record with `live: false` is what removes the
+    page and the images together."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+    (profiles / "example-artist.json").unlink()
+    assert generate(profiles, src, root, TODAY) == 0
+
+    write_profile(profiles, live=False)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not (root / "artists" / "example-artist").exists()
+    assert not (root / "img" / "artists" / "example-artist").exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_the_skipped_prune_warning_does_not_offer_a_half_takedown(workspace, capsys):
+    """The warning used to end "until the record is restored or the page is
+    removed by hand." Removing the page by hand is the route into the state
+    this whole section is about: it takes the page down and leaves the
+    photographs served.
+
+    It also said --check would report the page as an orphan, which it does
+    not: the manifest is carried forward here, so the entries are still in it
+    and the failure reads "in the committed manifest but no longer produced."
+    """
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    (profiles / "example-artist.json").unlink()
+    capsys.readouterr()
+
+    assert generate(profiles, src, root, TODAY) == 0
+    warning = capsys.readouterr().out
+    assert "by hand" not in warning
+    assert "orphan" not in warning
+    assert '"live": false' in warning
+
+    # what the run actually reports in this state, and what the warning now
+    # says instead
+    assert check(profiles, src, root, TODAY) == 1
+    assert "in the committed manifest but no longer produced" in capsys.readouterr().out
+
+
+# --- --check names a remedy that actually works -----------------------------
+
+
+def test_check_does_not_call_a_hand_made_image_directory_an_orphan(workspace):
+    """The image half of the orphan guard needs the same exemption the page
+    half has. The prune is forbidden to touch a directory it never published,
+    so reporting a hand-made img/artists/_shared/ was a red gate with no
+    action behind it."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    shared = root / "img" / "artists" / "_shared"
+    shared.mkdir()
+    (shared / "notes.txt").write_text("not published imagery")
+
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_check_still_reports_a_hand_made_directory_holding_published_imagery(workspace):
+    """The exemption is anchored on what this tool publishes — a WebP —
+    exactly as the page half is anchored on a published index.html. A
+    directory with a member's photographs in it is still reported however it
+    is named."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    shared = root / "img" / "artists" / "_shared"
+    shared.mkdir()
+    (shared / "work-01.webp").write_bytes(
+        (root / "img" / "artists" / "example-artist" / "work-01.webp").read_bytes()
+    )
+
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_tells_the_operator_to_re_run_for_leftover_staging(workspace, capsys):
+    """Leftover staging for a live member clears on the next publish, not by
+    setting `live: false` — which would take a member down who never asked
+    to come down, and is not what removes it."""
+    profiles, src, root = workspace
+    _two_members(profiles, src, root)
+    images = root / "img" / "artists"
+    leftover = images / ".beta.incoming"
+    leftover.mkdir()
+    (leftover / "work-01.webp").write_bytes(
+        (images / "beta" / "work-01.webp").read_bytes()
+    )
+    capsys.readouterr()
+
+    assert check(profiles, src, root, TODAY) == 1
+    out = capsys.readouterr().out
+    assert "img/artists/.beta.incoming/" in out
+    assert "Re-run the generator" in out
+    assert '"live": false' not in out
+
+    # and the named remedy is the one that works
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not leftover.exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_the_staging_remedy_does_not_name_a_prune_that_cannot_run(workspace, capsys):
+    """`generate()` skips the prune entirely when no profile records remain,
+    so "re-run the generator" is false in exactly the state a one-member
+    alliance lands in when that member asks to come down. The action that
+    does work is putting the record back with `live: false`."""
+    profiles, src, root = workspace
+    write_profile(profiles, slug="beta", name="Beta Artist")
+    generate(profiles, src, root, TODAY)
+    images = root / "img" / "artists"
+    leftover = images / ".beta.incoming"
+    leftover.mkdir()
+    (leftover / "work-01.webp").write_bytes(
+        (images / "beta" / "work-01.webp").read_bytes()
+    )
+    (profiles / "beta.json").unlink()
+    capsys.readouterr()
+
+    assert check(profiles, src, root, TODAY) == 1
+    out = capsys.readouterr().out
+    assert "img/artists/.beta.incoming/" in out
+    assert "a re-run will not clear this" in out
+
+    # the instruction the other branch prints, run here: it does nothing
+    assert generate(profiles, src, root, TODAY) == 0
+    assert leftover.exists()
+
+    # the instruction this branch prints: it works
+    write_profile(profiles, slug="beta", name="Beta Artist", live=False)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert not leftover.exists()
+    assert not (images / "beta").exists()
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_check_reports_unaccounted_imagery_whatever_its_format(workspace):
+    """The exemption asks whether a directory holds imagery a visitor is
+    served, not whether it holds this tool's own output format. A directory of
+    JPEGs under img/artists/ is served exactly as WebP is."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    ghost = root / "img" / "artists" / "ghost-member"
+    ghost.mkdir()
+    Image.new("RGB", (400, 300), (9, 9, 9)).save(ghost / "photo.jpg")
+
+    assert check(profiles, src, root, TODAY) == 1
+
+    # and case does not launder it
+    (ghost / "photo.jpg").rename(ghost / "PHOTO.JPG")
+    assert check(profiles, src, root, TODAY) == 1
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can read any directory")
+def test_check_still_reports_when_a_directory_cannot_be_read(workspace, capsys):
+    """The exemption reads each directory to decide, from inside --check's
+    failure collection. An unreadable one must not abandon the report: the
+    failures already found would never be printed, so the operator would see
+    a traceback and no findings at all."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    page = root / "artists" / "example-artist" / "index.html"
+    page.write_text(page.read_text().replace("Example Artist", "Edited By Hand"))
+    locked = root / "img" / "artists" / "locked"
+    locked.mkdir()
+    os.chmod(locked, 0o000)  # noqa: S103 -- deliberately unreadable, restored below
+    capsys.readouterr()
+
+    try:
+        assert check(profiles, src, root, TODAY) == 1
+        out = capsys.readouterr().out
+    finally:
+        os.chmod(locked, 0o755)  # noqa: S103 -- so tmp_path teardown can clean up
+
+    assert "does not match manifest" in out
+    assert "img/artists/locked/" in out
+
+
+def test_the_orphaned_image_message_does_not_promise_a_no_op(workspace, capsys):
+    """An orphaned image directory is by definition one the manifest has no
+    record of, and the prune may never touch what the manifest does not know
+    about — so `live: false` plus a re-run provably does nothing here, and
+    the guard must not name it."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _strand_a_page(profiles, root)
+    shutil.rmtree(root / "artists" / "example-artist")
+    capsys.readouterr()
+
+    assert check(profiles, src, root, TODAY) == 1
+    out = capsys.readouterr().out
+    assert "orphaned image directory" in out
+    assert "by hand" in out
+    assert '"live": false' not in out
+
+    # the action the message used to name, run: it changes nothing
+    write_profile(profiles, live=False)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert (root / "img" / "artists" / "example-artist").exists()
+
+
+def test_the_orphaned_page_message_does_not_promise_a_no_op(workspace, capsys):
+    """The same falsehood on the page half: nothing in the manifest records
+    the page as published, so no `live: false` re-run can prune it."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _strand_a_page(profiles, root)
+    capsys.readouterr()
+
+    assert check(profiles, src, root, TODAY) == 1
+    out = capsys.readouterr().out
+    assert "orphaned page" in out
+    assert "by hand" in out
+    assert '"live": false' not in out
+
+    write_profile(profiles, live=False)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert (root / "artists" / "example-artist" / "index.html").exists()
 
 
 def test_one_profiles_missing_originals_do_not_disable_image_checks_for_another(

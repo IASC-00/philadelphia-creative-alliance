@@ -55,6 +55,7 @@ from tools.profile_schema import (
     DISCIPLINES,
     ProfileError,
     STALE_AFTER_DAYS,
+    _SLUG_RE,
     availability_is_current,
     load_all,
 )
@@ -305,42 +306,89 @@ def _previously_known_slugs(manifest: dict) -> set[str]:
 def _remove_stale_profile_dirs(
     root: Path, live_slugs: set[str], known_slugs: set[str]
 ) -> None:
-    """Prune artists/<slug>/ and img/artists/<slug>/ for slugs this tool has
-    previously published (`known_slugs`) that are no longer live — removed
-    entirely, or flipped to `live: false`.
+    """Prune artists/<slug>/, img/artists/<slug>/ and any leftover
+    .<slug>.incoming staging, for slugs this tool has previously published
+    (`known_slugs`) that are no longer live — removed entirely, or flipped to
+    `live: false`.
 
-    Three guards, each closing a distinct way this pass could destroy
+    Driven by `known_slugs`, not by walking artists/. Walking artists/ made
+    the *page* directory the key to everything else the same member had
+    published: once it was gone — removed by hand on this tool's own advice,
+    by a prune that failed after removing it, or by a SIGKILL — their images
+    and staging could never be reached again. They stayed served, --check
+    stayed red, and every route the tool printed was a no-op. The manifest is
+    the record of what this tool published, so the manifest is what the prune
+    reads; a slug it knows is prunable regardless of which of that slug's
+    directories still exist.
+
+    Images before the page. A failure between the two halves then leaves the
+    page — the half a re-run rebuilds from committed JSON — rather than
+    photographs with no page in front of them.
+
+    A per-slug failure is reported and the loop continues, so one member's
+    unremovable directory cannot keep another member published. The first
+    error is re-raised once the loop is done: that raise leaves generate()
+    before it writes the manifest, so the previously committed manifest
+    survives untouched and still names every slug — including the one that
+    failed. That is what lets the next run retry, and it is why refusing to
+    remove something must always raise rather than pass quietly. A prune that
+    declined silently would be followed by a manifest write that no longer
+    named the member, and no later run could ever reach them again.
+
+    Four guards, each closing a distinct way this pass could destroy
     something it shouldn't:
       - `known_slugs` scoping: a directory that was never in a previously
         committed manifest (artists/profile.css's directory, a hand-made
         artists/_shared/, ...) is never touched, regardless of its name.
-      - `is_symlink()`: checked before `is_dir()`, because `Path.is_dir()`
-        follows symlinks and would otherwise let a symlinked directory
-        through the guard straight into `shutil.rmtree`, which raises on a
+      - the slug regex: `known_slugs` is derived from manifest keys, which
+        are text, and those keys are now joined onto `root` rather than
+        compared against directories that already exist. A hand-edited or
+        corrupted manifest must not be able to name `../..` — the slug got
+        its regex in tools/profile_schema.py after `..` once overwrote the
+        homepage, and the same shape is required here before anything is
+        joined.
+      - `is_symlink()`, checked before `is_dir()` in `_remove_dir`, because
+        `Path.is_dir()` follows symlinks and would otherwise let a symlinked
+        directory through straight into `shutil.rmtree`, which raises on a
         symlink rather than silently doing something safe.
-      - `is_dir()`: only directories are ever removed, never plain files.
+      - `is_dir()`: the page and image directories are only ever removed when
+        they are plain directories — artists/profile.css is a file living
+        beside them. Anything else there is refused *loudly*, per above. The
+        one exception is `.<slug>.incoming`: that path is this tool's own
+        namespace, nothing else can produce it, and it is removed whatever it
+        turns out to be.
     """
-    artists_dir = root / "artists"
-    if not artists_dir.exists():
-        return
-    for existing in sorted(artists_dir.iterdir()):
-        if existing.is_symlink():
+    failures: list[OSError] = []
+    for slug in sorted(known_slugs - live_slugs):
+        if not _SLUG_RE.fullmatch(slug):
+            # Not a slug this tool can have produced, so nothing here is ours
+            # to remove — but say so rather than dropping it in silence.
+            print(f"  ignored manifest entry for {slug!r}: not a slug this tool writes")
             continue
-        if not existing.is_dir():
-            continue
-        if existing.name not in known_slugs:
-            continue
-        if existing.name in live_slugs:
-            continue
-        shutil.rmtree(existing)
-        images = root / "img" / "artists" / existing.name
-        if images.exists() and not images.is_symlink():
-            shutil.rmtree(images)
-        # Also any staging directory a previously interrupted swap left behind
-        # for this slug: it holds the same member's artwork and is served just
-        # as publicly as the real directory.
-        _remove_path(_staging_path(images))
-        print(f"  removed artists/{existing.name}")
+        images = root / "img" / "artists" / slug
+        removed: list[str] = []
+        error: OSError | None = None
+        try:
+            if _remove_dir(images):
+                removed.append(f"img/artists/{slug}")
+            # Any staging directory a previously interrupted swap left behind
+            # for this slug: it holds the same member's artwork and is served
+            # just as publicly as the real directory.
+            if _remove_path(_staging_path(images)):
+                removed.append(f"img/artists/.{slug}.incoming")
+            if _remove_dir(root / "artists" / slug):
+                removed.append(f"artists/{slug}")
+        except OSError as exc:
+            error = exc
+            failures.append(exc)
+        # Printed even when this slug failed part-way: a removal that did
+        # happen is reported as having happened.
+        for name in removed:
+            print(f"  removed {name}")
+        if error is not None:
+            print(f"  FAILED to remove {slug}: {error}")
+    if failures:
+        raise failures[0]
 
 
 def _swap_into_place(built: Path, dest: Path) -> None:
@@ -391,8 +439,10 @@ def _staging_path(dest: Path) -> Path:
     return dest.parent / f".{dest.name}.incoming"
 
 
-def _remove_path(target: Path) -> None:
+def _remove_path(target: Path) -> bool:
     """Remove `target` whatever it is, and do nothing if it isn't there.
+    Reports whether anything was actually removed, so the prune only ever
+    prints that it removed something it did remove.
 
     `is_symlink()` is checked before `is_dir()` because `Path.is_dir()`
     follows symlinks, and `shutil.rmtree` raises on a symlink rather than
@@ -400,8 +450,39 @@ def _remove_path(target: Path) -> None:
     """
     if target.is_symlink() or target.is_file():
         target.unlink()
-    elif target.is_dir():
+        return True
+    if target.is_dir():
         shutil.rmtree(target)
+        return True
+    return False
+
+
+def _remove_dir(target: Path) -> bool:
+    """Remove `target` when it is a plain directory and report that it went;
+    return False when there is nothing there at all; raise when something *is*
+    there that this must not remove — a symlink, or a plain file.
+
+    The prune uses this rather than `_remove_path` because both refusals are
+    load-bearing there: artists/profile.css is a *file* living beside the
+    profile directories, and a symlink is not this tool's to follow into
+    `shutil.rmtree` (which raises on one) nor to unlink.
+
+    Refusing *loudly* is the part that matters. Returning False for something
+    that exists reads to the caller as "already gone", and the prune's caller
+    goes on to write a manifest that no longer names the slug — so a member
+    whose img/artists/<slug> happened to be a file or a symlink would be
+    forgotten by every future run while their bytes stayed served, and
+    --check would pass. A raise leaves the committed manifest intact and the
+    gate red, which is recoverable.
+    """
+    if target.is_symlink():
+        raise OSError(f"{target} is a symlink — remove it by hand")
+    if not target.exists():
+        return False
+    if not target.is_dir():
+        raise NotADirectoryError(f"{target} is not a directory — remove it by hand")
+    shutil.rmtree(target)
+    return True
 
 
 def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
@@ -490,8 +571,12 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
                 "profiles/<slug>.json and re-run this generator: that is what "
                 "removes their page and images. Deleting the record instead "
                 "leaves the published page and photos in place, and --check "
-                "will report the page as an orphan until the record is "
-                "restored or the page is removed by hand.\n"
+                "fails — the manifest still lists them and nothing produces "
+                'them — until the record is restored with "live": false and '
+                "this generator re-run, which then removes the page and the "
+                "images together. Removing the page yourself is not a "
+                "takedown: it takes down the page and leaves the photographs "
+                "served.\n"
                 "  If this is a fresh repo with no members yet, nothing has "
                 "been published and there is nothing to carry forward; "
                 "index.html's config blocks are still regenerated below."
@@ -546,7 +631,9 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
         return 0
 
 
-def _orphaned_page_failures(root: Path, committed: dict) -> list[str]:
+def _orphaned_page_failures(
+    root: Path, committed: dict, prune_enabled: bool = True
+) -> list[str]:
     """Anything published that no manifest entry accounts for — a page under
     artists/, or an image directory under img/artists/.
 
@@ -555,18 +642,37 @@ def _orphaned_page_failures(root: Path, committed: dict) -> list[str]:
     profile files remain, so the page and photos stay on disk while nothing
     in the manifest still refers to them.
 
-    The page half is anchored on index.html rather than on the directory
-    alone, so a hand-made artists/_shared/ (which the prune is likewise
-    forbidden to touch) is not reported as an orphan.
+    Both halves are anchored on what is actually *served*, not on a directory
+    existing: a published index.html under artists/, an image file of any
+    format under img/artists/. A hand-made artists/_shared/ or
+    img/artists/_shared/ holding notes or a stylesheet is one the prune is
+    forbidden to touch, so reporting it is a red gate with no action behind
+    it. The image half used to lack that exemption. It is deliberately not
+    narrowed to the `.webp` this tool writes: the sentence it prints is
+    "these are still being served", and a stray JPEG under img/artists/ is
+    served exactly as a WebP is.
 
-    The image half exists because removing an orphaned *page* by hand — which
-    is what this guard tells the operator to do — leaves the photos published
-    at img/artists/<slug>/ and the gate green, so the de-listed member's work
-    is still being served. It also catches `.<slug>.incoming` staging
-    directories left by an interrupted swap, which are published the same way.
+    The image half exists because removing an orphaned *page* leaves the
+    photos published at img/artists/<slug>/ and the gate green, so the
+    de-listed member's work is still being served. It also catches
+    `.<slug>.incoming` staging directories left by an interrupted swap, which
+    are published the same way.
+
+    What each failure tells the operator to do is decided by what the
+    manifest knows and by whether the prune can run at all, because together
+    those decide what the generator is able to do. Anything reported here is
+    by definition absent from the manifest, and the prune may never remove
+    what the manifest does not record it published — so naming a
+    `live: false` re-run would name an action that provably does nothing.
+    The exception is staging for a slug the manifest *does* know, which a
+    re-run does clear — but only while there is at least one profile record
+    on disk, since generate() skips the prune entirely when there are none.
+    `prune_enabled` carries that in, so this never tells an operator to
+    re-run a pass that will not run.
     """
     root = Path(root)
     failures = []
+    accounted = {key.split("/", 1)[0] for key in committed if "/" in key}
 
     artists_dir = root / "artists"
     if artists_dir.is_dir():
@@ -578,26 +684,119 @@ def _orphaned_page_failures(root: Path, committed: dict) -> list[str]:
             if f"{entry.name}/index.html" not in committed:
                 failures.append(
                     f"artists/{entry.name}/index.html: published but absent from "
-                    'the manifest — an orphaned page. Set "live": false on that '
-                    "profile and re-run the generator to take the member down "
-                    "properly; that removes the page and the images together."
+                    "the manifest — an orphaned page. The generator will not "
+                    "remove it: it only ever deletes what the manifest records "
+                    "it published, and this is not in the manifest. If the "
+                    "member's record is still there and live, re-run the "
+                    "generator — that republishes the page and records it. "
+                    f"Otherwise remove the directory by hand (rm -r artists/"
+                    f"{entry.name}/), and img/artists/{entry.name}/ with it if "
+                    "their photographs are still there."
                 )
 
     images_root = root / "img" / "artists"
     if images_root.is_dir():
-        accounted = {key.split("/", 1)[0] for key in committed if "/" in key}
         for entry in sorted(images_root.iterdir()):
             if entry.is_symlink() or not entry.is_dir():
                 continue
-            if entry.name in accounted:
+            staged_for = _staged_slug(entry.name)
+            if staged_for is None and entry.name in accounted:
                 continue
-            failures.append(
-                f"img/artists/{entry.name}/: published images absent from the "
-                "manifest — an orphaned image directory. These are still being "
-                'served. Set "live": false on that profile and re-run the '
-                "generator, which removes them."
-            )
+            if not _holds_images(entry):
+                continue
+            if staged_for is not None:
+                what = (
+                    f"img/artists/{entry.name}/: leftover staging from an "
+                    "interrupted publish — the same member's artwork, served "
+                    "just as publicly as the real directory."
+                )
+            else:
+                what = (
+                    f"img/artists/{entry.name}/: published images absent from "
+                    "the manifest — an orphaned image directory. These are "
+                    "still being served."
+                )
+            if staged_for is not None and staged_for in accounted and prune_enabled:
+                remedy = (
+                    "Re-run the generator: it clears this slug's staging "
+                    "either way — the next publish replaces it while the "
+                    "member is live, and the prune removes it once they are "
+                    "not."
+                )
+            elif staged_for is not None and staged_for in accounted:
+                remedy = (
+                    "No profile records remain, so the generator skips its "
+                    "prune pass by design and a re-run will not clear this. "
+                    "Put the member's record back in profiles/ with "
+                    '"live": false and re-run — that removes this staging '
+                    "along with their page and images. Removing the "
+                    "directory by hand works too."
+                )
+            else:
+                remedy = (
+                    "The generator will not remove it: it only ever deletes "
+                    "what the manifest records it published, and this is not "
+                    "in the manifest. If the member's record is still there "
+                    "and live, re-run the generator — that republishes and "
+                    "records these. Otherwise remove the directory by hand "
+                    f"(rm -r img/artists/{entry.name}/)."
+                )
+            failures.append(f"{what} {remedy}")
     return failures
+
+
+def _staged_slug(name: str) -> str | None:
+    """The slug a `.<slug>.incoming` staging directory belongs to, or None
+    when `name` is not one of those. See `_staging_path`."""
+    suffix = ".incoming"
+    if name.startswith(".") and name.endswith(suffix) and len(name) > len(suffix) + 1:
+        return name[1 : -len(suffix)]
+    return None
+
+
+IMAGE_SUFFIXES = frozenset(
+    {
+        ".webp",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".avif",
+        ".svg",
+        ".bmp",
+        ".tif",
+        ".tiff",
+    }
+)
+
+
+def _holds_images(directory: Path) -> bool:
+    """Whether `directory` holds imagery that a visitor would be served.
+
+    This is the image-side equivalent of the page half's "is there a
+    published index.html in it" anchor, and the reason a hand-made
+    img/artists/_shared/ holding notes or a stylesheet is not called an
+    orphan while the prune is forbidden to touch it.
+
+    Deliberately wider than the `.webp` this tool writes. The failure it
+    guards says "these are still being served", and GitHub Pages serves a
+    JPEG or a PNG dropped under img/artists/ exactly as it serves a WebP —
+    anchoring on this tool's own output format would have made a directory
+    full of somebody's photographs invisible to the gate. Suffixes are
+    compared lowercased, so PHOTO.JPG counts.
+
+    An unreadable directory reports True. Nothing can be ruled out about
+    what it serves, and this is called from inside --check's failure
+    collection: raising here would abandon the whole report, including
+    failures already found, and print nothing at all.
+    """
+    try:
+        return any(
+            child.is_file() and child.suffix.lower() in IMAGE_SUFFIXES
+            for child in directory.iterdir()
+        )
+    except OSError:
+        return True
 
 
 def _config_block_failures(root: Path, live) -> list[str]:
@@ -765,7 +964,9 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
         print(f"FAILED: manifest is unreadable ({exc})")
         return 1
 
-    failures.extend(_orphaned_page_failures(root, committed))
+    # `bool(_all)` is exactly the condition generate() prunes on, so the
+    # remedies below never name a pass that will not run.
+    failures.extend(_orphaned_page_failures(root, committed, bool(_all)))
     failures.extend(_config_block_failures(root, live))
 
     for profile in live:
