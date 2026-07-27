@@ -8,7 +8,7 @@ from tools.profile_images import (
     process_profile_images,
     resize_to_long_edge,
 )
-from tools.profile_schema import load_profile
+from tools.profile_schema import ProfileError, load_profile
 
 from tests.test_profile_schema import write_profile
 
@@ -78,6 +78,38 @@ def test_a_profile_with_a_portrait_never_gets_a_tile(tmp_path, src_dir):
     entries = process_profile_images(profile, src_dir, tmp_path / "out")
     assert "example-artist/tile.webp" not in entries
     assert not (tmp_path / "out" / "example-artist" / "tile.webp").exists()
+
+
+def test_a_work_named_tile_collides_with_the_generated_fallback(tmp_path):
+    # No portrait means the pipeline would generate tile.webp for the header
+    # slot; a work whose stem is also "tile" would otherwise silently
+    # overwrite it (or vice versa, depending on write order) instead of
+    # raising. Neither the source image nor an out dir needs to exist for
+    # this — the collision is detected from filenames alone, before any I/O.
+    works = [{"src": "tile.jpg", "alt": "A piece literally named tile."}]
+    profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
+    with pytest.raises(ProfileError, match="tile.webp"):
+        process_profile_images(profile, tmp_path, tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+def test_two_works_sharing_a_filename_stem_collide(tmp_path):
+    works = [
+        {"src": "piece.jpg", "alt": "A piece."},
+        {"src": "piece.png", "alt": "Another piece, different file."},
+    ]
+    profile = load_profile(write_profile(tmp_path, works=works))
+    with pytest.raises(ProfileError, match="piece.webp"):
+        process_profile_images(profile, tmp_path, tmp_path / "out")
+
+
+def test_non_colliding_names_still_process_normally(tmp_path, src_dir):
+    profile = load_profile(write_profile(tmp_path))
+    entries = process_profile_images(profile, src_dir, tmp_path / "out")
+    assert set(entries.keys()) == {
+        "example-artist/work-01.webp",
+        "example-artist/portrait.webp",
+    }
 
 
 def test_transparent_source_keeps_its_alpha_channel(tmp_path):

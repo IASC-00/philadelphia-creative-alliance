@@ -25,7 +25,7 @@ from pathlib import Path
 from PIL import Image
 
 from tools.mosaic import build_org_tile, save_asset, sha256_of
-from tools.profile_schema import Profile, discipline_by_slug
+from tools.profile_schema import Profile, ProfileError, discipline_by_slug
 
 LONG_EDGE = 1600
 
@@ -88,16 +88,43 @@ def process_profile_images(
     it has works — since the header is an identity mark and an artwork is
     not a portrait. A profile that has a portrait never gets a tile.
 
+    Every output's filename (`<stem>.webp` per work/portrait, plus `tile.webp`
+    when generated) is checked for collisions with every other output before
+    anything is written — two submitted images sharing a stem (`piece.jpg`
+    and `piece.png`), or a work named `tile.*` colliding with the generated
+    fallback, would otherwise silently overwrite one another. Raises
+    `ProfileError` instead: a naming collision among hand-transcribed values
+    needs a human decision, the same as a slug collision.
+
     Returns manifest entries keyed `"<slug>/<filename>.webp"`, each carrying
     `sha256`, `width`, and `height`.
     """
     out_dir = Path(out_root) / profile.slug
-    out_dir.mkdir(parents=True, exist_ok=True)
     entries: dict[str, dict] = {}
 
     sources = list(profile.works)
     if profile.portrait:
         sources.append(profile.portrait)
+    needs_tile = profile.portrait is None
+
+    # label -> output filename; checked for collisions before any file I/O.
+    planned: list[tuple[str, str]] = [
+        (item.src, f"{Path(item.src).stem}.webp") for item in sources
+    ]
+    if needs_tile:
+        planned.append(("<generated fallback tile>", "tile.webp"))
+
+    by_name: dict[str, list[str]] = {}
+    for label, name in planned:
+        by_name.setdefault(name, []).append(label)
+    for name, labels in sorted(by_name.items()):
+        if len(labels) > 1:
+            raise ProfileError(
+                f"{profile.slug}: {' and '.join(labels)} all produce {name} — "
+                "rename one source by hand"
+            )
+
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     for item in sources:
         source = Path(src_dir) / item.src
@@ -109,7 +136,7 @@ def process_profile_images(
         save_asset(resized, target)
         entries[f"{profile.slug}/{target.name}"] = _manifest_entry(target, resized)
 
-    if profile.portrait is None:
+    if needs_tile:
         tile = fallback_tile(profile)
         target = out_dir / "tile.webp"
         save_asset(tile, target)

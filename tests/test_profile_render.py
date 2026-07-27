@@ -50,6 +50,19 @@ def test_current_availability_shows_the_badge(tmp_path):
     assert "Teaching" in html
 
 
+def test_open_to_preserves_the_applicants_own_casing(tmp_path):
+    availability = {
+        "status": "open",
+        "openTo": ["AI residencies"],
+        "updated": "2026-07-26",
+    }
+    html = render_profile(
+        load_profile(write_profile(tmp_path, availability=availability)), TODAY
+    )
+    assert "AI residencies" in html
+    assert "Ai residencies" not in html
+
+
 def test_stale_availability_drops_the_badge_but_keeps_open_to(tmp_path):
     availability = {"status": "open", "openTo": ["teaching"], "updated": "2025-01-01"}
     html = render_profile(
@@ -70,7 +83,19 @@ def test_og_image_points_at_the_first_work(tmp_path):
 def test_og_image_falls_back_to_the_tile(tmp_path):
     profile = load_profile(write_profile(tmp_path, works=[], portrait=None))
     html = render_profile(profile, TODAY)
-    assert "/img/artists/example-artist/tile.webp" in html
+    assert (
+        'content="https://philadelphiacreativealliance.com'
+        '/img/artists/example-artist/tile.webp"' in html
+    )
+
+
+def test_og_image_uses_the_portrait_when_there_are_no_works(tmp_path):
+    profile = load_profile(write_profile(tmp_path, works=[]))
+    html = render_profile(profile, TODAY)
+    assert (
+        'content="https://philadelphiacreativealliance.com'
+        '/img/artists/example-artist/portrait.webp"' in html
+    )
 
 
 def test_renders_the_portrait_when_present(tmp_path):

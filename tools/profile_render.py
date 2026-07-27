@@ -43,10 +43,15 @@ def _image_name(src: str) -> str:
 
 
 def _hero_image(profile: Profile) -> str:
-    """The image path for `og:image`. Mirrors `profile_images.process_profile_images`
-    exactly: first work wins, else the portrait, else the pipeline's `tile.webp`
-    fallback — which that pipeline only ever writes when a profile has neither
-    works nor a portrait, so this stays aligned with what's actually on disk.
+    """The image path for `og:image`: first work wins, else the portrait, else
+    `tile.webp`.
+
+    `profile_images.process_profile_images` writes `tile.webp` whenever the
+    profile has no portrait at all, works or no works — but this function only
+    reaches that fallback in the stricter case where there are neither works
+    nor a portrait, because a first work, when present, always wins over the
+    tile as the hero image. Every branch here still names a file the pipeline
+    actually writes for the same profile.
     """
     if profile.works:
         return _image_name(profile.works[0].src)
@@ -65,7 +70,8 @@ def render_profile(profile: Profile, today: date) -> str:
     tags = "".join(f'<li class="tag">{_e(label)}</li>' for label in labels)
     bio = "".join(f"<p>{_e(para)}</p>" for para in profile.bio)
     open_to = "".join(
-        f"<li>{_e(item.capitalize())}</li>" for item in profile.availability.openTo
+        f"<li>{_e(item[:1].upper() + item[1:])}</li>"
+        for item in profile.availability.openTo
     )
 
     badge = ""
