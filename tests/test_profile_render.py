@@ -1,6 +1,7 @@
 # ruff: noqa: S101
 import re
 from datetime import date
+from pathlib import Path
 
 from PIL import Image
 
@@ -9,6 +10,8 @@ from tools.profile_render import render_profile
 from tools.profile_schema import load_profile
 
 from tests.test_profile_schema import write_profile
+
+REPO = Path(__file__).resolve().parent.parent
 
 TODAY = date(2026, 7, 26)
 
@@ -157,3 +160,28 @@ def test_header_image_matches_what_the_pipeline_writes_when_only_works_exist(tmp
     match = re.search(r'<img class="portrait" src="[^"]+/([^"/]+)"', html)
     assert match is not None
     assert match.group(1) in written_names
+
+
+def test_stylesheet_exists_and_defines_both_themes():
+    css = (REPO / "artists" / "profile.css").read_text()
+    assert "--grout-ink" in css
+    assert "prefers-color-scheme: dark" in css
+    assert '[data-theme="dark"]' in css
+    assert '[data-theme="light"]' in css
+
+
+def test_stylesheet_covers_every_class_the_renderer_emits():
+    css = (REPO / "artists" / "profile.css").read_text()
+    for selector in (
+        ".portrait",
+        ".tags",
+        ".badge",
+        ".work",
+        ".enlarge",
+        ".availability",
+        ".contact",
+        ".relay",
+        ".badge-snippet",
+        "dialog",
+    ):
+        assert selector in css, f"stylesheet has no rule for {selector}"

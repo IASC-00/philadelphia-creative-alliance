@@ -1,0 +1,60 @@
+/* artists/profile.css — shared by every generated profile page.
+   Tokens mirror the identity in DESIGN.md; keep them in step with index.html. */
+:root {
+  --grout-ink: #17131f;
+  --plaster: #e9e7e0;
+  --paper: #f3eee7;
+  --accent: #d63f26;
+  --ground: var(--plaster);
+  --text: var(--grout-ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ground: #141019; --text: var(--paper); --accent: #f5573b; }
+}
+:root[data-theme="dark"] { --ground: #141019; --text: var(--paper); --accent: #f5573b; }
+:root[data-theme="light"] { --ground: var(--plaster); --text: var(--grout-ink); --accent: #d63f26; }
+
+body {
+  margin: 0 auto;
+  max-width: 62rem;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--ground);
+  color: var(--text);
+  font: 1rem/1.6 system-ui, sans-serif;
+}
+h1 { font-family: Palatino, "Palatino Linotype", Georgia, serif; font-size: clamp(2rem, 6vw, 3.25rem); margin: 0 0 .5rem; }
+h2 { font-family: Palatino, "Palatino Linotype", Georgia, serif; font-size: 1.5rem; }
+.tags { display: flex; flex-wrap: wrap; gap: .5rem; list-style: none; margin: 0 0 .75rem; padding: 0; }
+.tag { font: .75rem/1 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; border: 1px solid currentColor; border-radius: 999px; padding: .4rem .7rem; }
+.location { font: .8rem/1 ui-monospace, monospace; opacity: .75; margin: 0 0 1rem; }
+.badge { display: inline-block; background: var(--accent); color: var(--paper); font: .75rem/1 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; padding: .45rem .8rem; border-radius: 999px; margin: 0; }
+.tagline p { font-family: Palatino, "Palatino Linotype", Georgia, serif; font-size: 1.35rem; }
+.works { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1.5rem; margin: 2.5rem 0; }
+.work { margin: 0; }
+.work img { width: 100%; height: auto; display: block; }
+.work figcaption { font: .8rem/1.4 ui-monospace, monospace; opacity: .8; margin-top: .5rem; }
+.work figcaption span { display: block; margin-top: .35rem; font-family: system-ui, sans-serif; opacity: .9; }
+.availability ul, .links ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .75rem; }
+.confirmed { font: .75rem/1 ui-monospace, monospace; opacity: .7; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+footer { margin-top: 3rem; border-top: 1px solid currentColor; padding-top: 1rem; font: .8rem/1 ui-monospace, monospace; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
+
+.portrait { width: 7rem; height: 7rem; object-fit: cover; border-radius: 50%; display: block; margin-bottom: 1rem; }
+.enlarge { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.enlarge:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.contact form { display: grid; gap: .75rem; max-width: 32rem; }
+.contact label { display: grid; gap: .3rem; font: .75rem/1 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+.contact input, .contact textarea { font: 1rem/1.5 system-ui, sans-serif; padding: .6rem; border: 1px solid currentColor; background: transparent; color: inherit; border-radius: 2px; }
+.contact button, dialog button { font: .8rem/1 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; padding: .7rem 1.2rem; border: 0; background: var(--accent); color: var(--paper); cursor: pointer; justify-self: start; }
+.relay { font: .8rem/1.5 system-ui, sans-serif; opacity: .8; }
+.badge-snippet pre { overflow-x: auto; padding: 1rem; border: 1px solid currentColor; }
+.badge-snippet code { font: .8rem/1.5 ui-monospace, monospace; }
+dialog { border: 0; padding: 0; max-width: 92vw; max-height: 92vh; background: var(--ground); color: var(--text); }
+dialog::backdrop { background: rgba(20, 16, 25, .88); }
+dialog img { display: block; max-width: 92vw; max-height: 82vh; width: auto; height: auto; }
+dialog form { padding: .75rem; text-align: right; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .enlarge img { transition: opacity .15s ease; }
+  .enlarge:hover img { opacity: .88; }
+}
