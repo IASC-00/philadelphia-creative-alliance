@@ -1,4 +1,5 @@
 # ruff: noqa: S101
+import json
 import re
 from datetime import date
 from pathlib import Path
@@ -9,7 +10,7 @@ from tools.profile_images import process_profile_images
 from tools.profile_render import render_profile
 from tools.profile_schema import load_profile
 
-from tests.test_profile_schema import write_profile
+from tests.test_profile_schema import VALID, write_profile
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -149,6 +150,46 @@ def test_badge_snippet_is_escaped_not_executable(tmp_path):
 def test_footer_carries_member_since(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
     assert "Member since 2026-07-26" in html
+
+
+def test_contact_copy_does_not_promise_delivery(tmp_path):
+    """No Formspree submission has ever been confirmed delivered — the module
+    says so itself. Claiming messages "reach this member" asserts an outcome
+    nobody has observed: if the relay is broken the message vanishes while
+    both sender and member believe it landed."""
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert "Messages reach this member" not in html
+    assert "This form goes to the Alliance, which passes it on to the member." in html
+    assert "Their address is not published here." in html
+
+
+def test_last_confirmed_is_omitted_when_updated_is_null(tmp_path):
+    """A label with nothing after it is a broken page, which this renderer is
+    specified to refuse to emit. Fixed in the renderer, not the loader: a
+    standing ruling keeps availability_is_current lenient about `updated`."""
+    availability = {"status": "open", "openTo": ["teaching"], "updated": None}
+    html = render_profile(
+        load_profile(write_profile(tmp_path, availability=availability)), TODAY
+    )
+    assert "Last confirmed" not in html
+    assert "Teaching" in html
+
+
+def test_last_confirmed_is_omitted_when_updated_is_absent(tmp_path):
+    availability = {"status": "open", "openTo": ["teaching"]}
+    html = render_profile(
+        load_profile(write_profile(tmp_path, availability=availability)), TODAY
+    )
+    assert "Last confirmed" not in html
+
+
+def test_member_since_is_omitted_when_joined_is_absent(tmp_path):
+    data = {k: v for k, v in VALID.items() if k != "joined"}
+    path = tmp_path / "no-joined.json"
+    path.write_text(json.dumps(data))
+    html = render_profile(load_profile(path), TODAY)
+    assert "Member since" not in html
+    assert "Philadelphia Creative Alliance</a>" in html
 
 
 def test_works_are_enlargeable_with_a_native_dialog(tmp_path):

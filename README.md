@@ -8,8 +8,8 @@ Individual artists join free.
 
 **Status: working draft, not launched.** `philadelphiacreativealliance.com` is registered but
 still points at registrar parking — the site is not serving there yet. The join forms are wired
-but inert until a Formspree ID is set, and donations are off until the Alliance has an entity to
-receive them.
+to a Formspree endpoint, delivery unconfirmed — no submission has been seen arriving, so don't
+describe them as working. Donations are off until the Alliance has an entity to receive them.
 
 ## This repo
 
@@ -49,19 +49,22 @@ sha256 and dimensions against the committed `img/manifest.json` rather than trus
 
 ## Adding a member
 
-Members live in the `PCA` config block at the top of the `<script>` in `index.html`. Nothing is
-listed publicly until its owner has agreed in writing to appear.
+Nothing is listed publicly until its owner has agreed in writing to appear.
+
+**Organisations** are hand-edited, in the `PCA` config block at the top of the `<script>` in
+`index.html`:
 
 ```js
 PCA.orgs = [
   { name: 'Example Org', type: 'music-sound', url: 'https://example.org',
     blurb: 'Optional — falls back to the organisation type description.' }
 ];
-
-PCA.artists = [
-  { name: 'A Maker', discipline: 'Ceramicist', url: 'https://example.com' }
-];
 ```
+
+**Artists are not.** `PCA.artists` and `PCA.disciplines` sit between `// GENERATED` markers and
+are rewritten from `profiles/*.json` every time `tools/profiles.py` runs — an entry added by hand
+there renders a blank discipline and is erased on the next build. Add an artist by writing a
+profile and running the generator; see [Artist profiles](#artist-profiles) below.
 
 `type` must match a `slug` in `PCA.orgTypes`, which also names its tile texture
 (`img/tile-<slug>.webp`). An unrecognised slug is skipped rather than rendered broken. Each
@@ -82,11 +85,24 @@ Part of the Alliance? Add the badge to your site's footer:
 ## Artist profiles
 
 Profiles are data. `profiles/<slug>.json` is the source of truth; `tools/profiles.py`
-renders `artists/<slug>/index.html` and processes imagery into `img/artists/<slug>/`.
+renders `artists/<slug>/index.html`, processes imagery into `img/artists/<slug>/`, and
+rewrites the `disciplines` and `artists` blocks in `index.html` between their
+`// GENERATED` markers.
 
     python3 tools/profiles.py           # build
     python3 tools/profiles.py --check   # verify committed output is current
 
-Submitted originals go in `intake/` and are not published — only the processed WebP is.
-A profile without a recorded `consent` block will not build. Set `live: false` to take a
-profile down without deleting its record.
+To add an artist: write `profiles/<slug>.json`, drop their submitted images in `intake/`,
+run the generator, and commit what it produced. `disciplines` is an array of one to three
+slugs from the taxonomy in `tools/profile_schema.py` — not a free-text label. A profile
+without a recorded `consent` block will not build.
+
+Submitted originals stay in `intake/`, which is gitignored — only the processed WebP is
+published. Because of that, `--check` can only rebuild and compare imagery where those
+originals are on disk; elsewhere (a fresh clone, CI) it compares the committed manifest
+against what is on disk and says so. Page HTML comes from the committed JSON alone, so it
+is always rebuilt and compared.
+
+**To take a member down, set `live: false` on their profile and re-run the generator.** That
+is what removes their page and images. Deleting the record instead leaves the published page
+and photos in place — the generator warns and `--check` reports the page as an orphan.

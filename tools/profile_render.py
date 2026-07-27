@@ -10,7 +10,17 @@ as the same class of hostile input.
 
 `render_profile` takes `today` as a parameter and never reads a clock —
 directly, or through a default argument evaluated at import time — because
-a later golden test asserts the generated HTML is byte-stable across runs.
+the generated HTML must be byte-stable across runs and reproducible from a
+recorded date afterwards. Guarded by
+tests/test_golden.py::test_today_parameter_is_load_bearing, which is
+clock-independent; the byte-stability test alone cannot catch a
+reintroduced clock read, since both of its runs happen on the same day.
+
+Nothing here asserts an outcome the project has not observed. The contact
+form's copy describes where the message goes, not that it arrives: no
+Formspree submission has been confirmed delivered (see FORMSPREE_ID below),
+and if the relay is broken a promise of delivery leaves both sender and
+member believing a message landed when it did not.
 """
 
 from __future__ import annotations
@@ -81,6 +91,19 @@ def render_profile(profile: Profile, today: date) -> str:
             f"{_e(STATUS_LABEL[profile.availability.status])}</p>"
         )
 
+    # A label with nothing after it is a broken page, which this renderer is
+    # specified to refuse to emit: `updated` is null on some records and
+    # absent on others, and `joined` is optional, so both used to ship as
+    # "Last confirmed None", a dangling "Last confirmed ", or "Member since ".
+    # Fixed here rather than by tightening the loader — a standing ruling
+    # keeps availability_is_current lenient about what `updated` contains.
+    updated = str(profile.availability.updated or "").strip()
+    confirmed = (
+        f'<p class="confirmed">Last confirmed {_e(updated)}</p>' if updated else ""
+    )
+    joined = str(profile.joined or "").strip()
+    member_since = f"<span>Member since {_e(joined)}</span>" if joined else ""
+
     portrait_src = (
         _image_name(profile.portrait.src) if profile.portrait else "tile.webp"
     )
@@ -144,7 +167,7 @@ def render_profile(profile: Profile, today: date) -> str:
 <section class="availability">
 <h2>Open to</h2>
 <ul>{open_to}</ul>
-<p class="confirmed">Last confirmed {_e(profile.availability.updated)}</p>
+{confirmed}
 </section>
 <section class="links"><ul>{links}</ul></section>
 <section class="contact">
@@ -157,7 +180,7 @@ def render_profile(profile: Profile, today: date) -> str:
 <label>Message <textarea name="message" rows="5" required></textarea></label>
 <button type="submit">Send</button>
 </form>
-<p class="relay">Messages reach this member through the Alliance. Their address stays private.</p>
+<p class="relay">This form goes to the Alliance, which passes it on to the member. Their address is not published here.</p>
 </section>
 <section class="badge-snippet">
 <h2>Carry the badge</h2>
@@ -166,7 +189,7 @@ def render_profile(profile: Profile, today: date) -> str:
 </section>
 <footer>
 <a href="/">Philadelphia Creative Alliance</a>
-<span>Member since {_e(profile.joined)}</span>
+{member_since}
 </footer>
 <dialog id="lightbox"><img alt=""><form method="dialog"><button>Close</button></form></dialog>
 <script>
