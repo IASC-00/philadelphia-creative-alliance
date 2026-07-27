@@ -1,10 +1,14 @@
 # ruff: noqa: S101
+import re
 from datetime import date
 
+from PIL import Image
+
+from tools.profile_images import process_profile_images
 from tools.profile_render import render_profile
 from tools.profile_schema import load_profile
 
-from tests.test_profile_schema import VALID, write_profile
+from tests.test_profile_schema import write_profile
 
 TODAY = date(2026, 7, 26)
 
@@ -107,3 +111,24 @@ def test_works_are_enlargeable_with_a_native_dialog(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
     assert "<dialog" in html
     assert "showModal()" in html
+
+
+def test_header_image_matches_what_the_pipeline_writes_when_only_works_exist(tmp_path):
+    # Works present, portrait absent: the pipeline (tools.profile_images) now
+    # writes tile.webp for the header slot in this exact case, not only when a
+    # profile has no imagery at all. This pins the renderer's portrait-fallback
+    # path to the filename the pipeline actually produces for the same profile,
+    # rather than each module's naming contract being verified in isolation.
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    Image.new("RGB", (400, 300), (10, 20, 30)).save(src_dir / "work-01.jpg")
+
+    profile = load_profile(write_profile(tmp_path, portrait=None))
+    entries = process_profile_images(profile, src_dir, tmp_path / "out")
+    written_names = {name.split("/", 1)[1] for name in entries}
+    assert written_names == {"work-01.webp", "tile.webp"}
+
+    html = render_profile(profile, TODAY)
+    match = re.search(r'<img class="portrait" src="[^"]+/([^"/]+)"', html)
+    assert match is not None
+    assert match.group(1) in written_names

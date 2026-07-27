@@ -6,11 +6,16 @@ later golden/manifest check can trust a rebuild rather than re-hashing. Nothing
 below depends on a clock or a random seed introduced in this module — the only
 randomness involved is `tools.mosaic`'s own name-seeded RNG, used unchanged.
 
-Rights-cleanliness is the other half: a profile with no submitted imagery at
-all never falls back to a stock photo or a placeholder person. It falls back
-to a generated mosaic tile from `tools.mosaic.build_org_tile`, deterministically
-seeded from the artist's own slug — never a photograph implying a member who
-hasn't consented.
+Rights-cleanliness is the other half: a profile never falls back to a stock
+photo or a placeholder person. It falls back to a generated mosaic tile from
+`tools.mosaic.build_org_tile`, deterministically seeded from the artist's own
+slug — never a photograph implying a member who hasn't consented.
+
+The header portrait is an identity mark, so every profile gets one: a
+profile with no submitted portrait gets `tile.webp` for that slot even when
+it has works, because a submitted artwork is not a portrait and showing the
+same image as both the header and the first work would be redundant. Only a
+profile that has a portrait skips the tile.
 """
 
 from __future__ import annotations
@@ -52,7 +57,8 @@ def _normalize_mode(img: Image.Image) -> Image.Image:
 
 
 def fallback_tile(profile: Profile) -> Image.Image:
-    """A deterministic mosaic tile for profiles with no submitted imagery.
+    """A deterministic mosaic tile for a profile's header slot when it has no
+    submitted portrait.
 
     Seeded from the artist's slug (via `build_org_tile`'s own `tile-{slug}`
     naming) so the same profile always gets the same tile, and hued by the
@@ -77,8 +83,10 @@ def process_profile_images(
 
     Every `Work` in `profile.works` plus `profile.portrait` (if set) is read
     from `src_dir`, bounded to `LONG_EDGE` on its long edge, and written as
-    WebP under `out_root/<slug>/`. A profile with no submitted imagery at all
-    gets a single generated fallback tile instead — never a stock photo.
+    WebP under `out_root/<slug>/`. A profile with no submitted portrait also
+    gets a generated `tile.webp` for the header slot — regardless of whether
+    it has works — since the header is an identity mark and an artwork is
+    not a portrait. A profile that has a portrait never gets a tile.
 
     Returns manifest entries keyed `"<slug>/<filename>.webp"`, each carrying
     `sha256`, `width`, and `height`.
@@ -101,7 +109,7 @@ def process_profile_images(
         save_asset(resized, target)
         entries[f"{profile.slug}/{target.name}"] = _manifest_entry(target, resized)
 
-    if not sources:
+    if profile.portrait is None:
         tile = fallback_tile(profile)
         target = out_dir / "tile.webp"
         save_asset(tile, target)

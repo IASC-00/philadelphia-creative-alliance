@@ -62,6 +62,24 @@ def test_process_profile_images_falls_back_to_tile_when_no_imagery_at_all(tmp_pa
     assert (tmp_path / "out" / "example-artist" / "tile.webp").exists()
 
 
+def test_works_present_but_no_portrait_still_gets_a_header_tile(tmp_path, src_dir):
+    profile = load_profile(write_profile(tmp_path, portrait=None))
+    entries = process_profile_images(profile, src_dir, tmp_path / "out")
+    assert set(entries.keys()) == {
+        "example-artist/work-01.webp",
+        "example-artist/tile.webp",
+    }
+    assert (tmp_path / "out" / "example-artist" / "work-01.webp").exists()
+    assert (tmp_path / "out" / "example-artist" / "tile.webp").exists()
+
+
+def test_a_profile_with_a_portrait_never_gets_a_tile(tmp_path, src_dir):
+    profile = load_profile(write_profile(tmp_path))
+    entries = process_profile_images(profile, src_dir, tmp_path / "out")
+    assert "example-artist/tile.webp" not in entries
+    assert not (tmp_path / "out" / "example-artist" / "tile.webp").exists()
+
+
 def test_transparent_source_keeps_its_alpha_channel(tmp_path):
     d = tmp_path / "src2"
     d.mkdir()
