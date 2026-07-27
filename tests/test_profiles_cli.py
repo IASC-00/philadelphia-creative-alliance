@@ -417,6 +417,211 @@ def test_a_failure_writing_index_html_leaves_the_published_page_in_place(workspa
     assert (root / "artists" / "first" / "index.html").exists()
 
 
+# --- --check away from the authoring machine -------------------------------
+#
+# intake/ is gitignored on purpose: only the processed WebP is published. So
+# on a fresh clone or a CI runner the originals are simply not there, and an
+# image rebuild is not available. That must not take the *page* comparison
+# down with it — page HTML is a function of the committed profile JSON alone.
+
+
+def _simulate_fresh_clone(src):
+    """Everything a clone has (profiles/, artists/, img/artists/, the
+    manifest) with the one thing it never has: intake/."""
+    for f in src.iterdir():
+        f.unlink()
+
+
+def test_check_passes_on_a_fresh_clone_with_no_intake(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _simulate_fresh_clone(src)
+
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_check_says_so_when_it_cannot_rebuild_the_images(workspace, capsys):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _simulate_fresh_clone(src)
+    capsys.readouterr()
+
+    check(profiles, src, root, TODAY)
+    out = capsys.readouterr().out
+    assert "intake/ is gitignored" in out
+    assert "page HTML is still rebuilt and compared in full" in out
+
+
+def test_check_still_catches_text_staleness_with_no_intake(workspace):
+    """The whole point of splitting the two comparisons: with the originals
+    absent, a profile edited but not regenerated used to be undetectable —
+    the rebuild raised FileNotFoundError before rendering a single page."""
+    profiles, src, root = workspace
+    path = write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _simulate_fresh_clone(src)
+
+    data = json.loads(path.read_text())
+    data["tagline"] = "A brand new tagline nobody has seen yet."
+    path.write_text(json.dumps(data))
+
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_still_catches_a_swapped_image_with_no_intake(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _simulate_fresh_clone(src)
+    Image.new("RGB", (1600, 1200), (0, 0, 0)).save(
+        root / "img" / "artists" / "example-artist" / "work-01.webp"
+    )
+
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_still_catches_a_removed_profile_with_no_intake(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles, slug="first", name="First Artist")
+    write_profile(profiles, slug="second", name="Second Artist")
+    generate(profiles, src, root, TODAY)
+    _simulate_fresh_clone(src)
+    (profiles / "first.json").unlink()
+
+    assert check(profiles, src, root, TODAY) == 1
+
+
+# --- --check covers index.html's generated blocks ---------------------------
+
+
+def _index_with_markers(root):
+    index = root / "index.html"
+    index.write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    return index
+
+
+def test_check_fails_when_the_artist_roster_was_hand_edited(workspace):
+    """The realistic path is a dropped merge hunk, not tampering: an artist
+    left invisible on the wall, or linked to a 404, while --check stayed
+    green because the manifest covers only artists/* pages and images."""
+    profiles, src, root = workspace
+    index = _index_with_markers(root)
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    assert check(profiles, src, root, TODAY) == 0
+
+    index.write_text(index.read_text().replace("Example Artist", "Somebody Else"))
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_fails_when_index_html_was_reverted_wholesale(workspace):
+    profiles, src, root = workspace
+    index = _index_with_markers(root)
+    before = index.read_text()
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+
+    index.write_text(before)
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_names_the_block_that_does_not_match(workspace, capsys):
+    profiles, src, root = workspace
+    index = _index_with_markers(root)
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    index.write_text(index.read_text().replace("Example Artist", "Somebody Else"))
+    capsys.readouterr()
+
+    check(profiles, src, root, TODAY)
+    out = capsys.readouterr().out
+    assert "index.html: the generated 'artists' block" in out
+
+
+def test_check_fails_when_a_marker_was_dropped_from_index_html(workspace):
+    profiles, src, root = workspace
+    index = _index_with_markers(root)
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+
+    index.write_text(index.read_text().replace("// END GENERATED artists", ""))
+    assert check(profiles, src, root, TODAY) == 1
+
+
+# --- crossing the availability window ---------------------------------------
+
+SOON = date(2026, 7, 27)  # inside the window: same output as TODAY
+LATER = date(2026, 12, 31)  # past it: the badge stops rendering
+
+
+def test_generate_records_the_date_it_rendered_on(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    manifest = json.loads((root / "img" / "artists" / "manifest.json").read_text())
+    assert manifest["_meta"]["generated"] == TODAY.isoformat()
+
+
+def test_a_rebuild_that_changes_nothing_keeps_the_recorded_date(workspace):
+    """The recorded date describes the bytes on disk. When a rebuild
+    reproduces them exactly, the old date still reproduces them and is kept —
+    otherwise every build would rewrite the manifest with today's date and
+    dirty the tree for no change in output."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    manifest_path = root / "img" / "artists" / "manifest.json"
+    before = manifest_path.read_bytes()
+
+    assert generate(profiles, src, root, SOON) == 0
+    assert manifest_path.read_bytes() == before
+
+
+def test_a_rebuild_after_the_window_closes_records_the_new_date(workspace):
+    """The converse, and the reason the date is recorded at all: past the
+    window the badge stops rendering, so the page genuinely changes and the
+    recorded date must move with it."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    page = root / "artists" / "example-artist" / "index.html"
+    assert "Taking work now" in page.read_text()
+
+    assert generate(profiles, src, root, LATER) == 0
+    assert "Taking work now" not in page.read_text()
+    manifest = json.loads((root / "img" / "artists" / "manifest.json").read_text())
+    assert manifest["_meta"]["generated"] == LATER.isoformat()
+    assert check(profiles, src, root, LATER) == 0
+
+
+def test_check_passes_after_the_availability_window_closes(workspace):
+    """The badge renders only while availability.updated is inside the 90-day
+    window, so on day 91 a rebuild against *today* diverges from committed
+    output with nothing on disk having changed. check() re-renders against
+    the date recorded at generate time instead, which keeps the page a static
+    artifact and the comparison reproducible."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+
+    assert check(profiles, src, root, LATER) == 0
+
+
+def test_check_reports_stale_availability_as_a_notice_not_a_failure(workspace, capsys):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    capsys.readouterr()
+
+    assert check(profiles, src, root, LATER) == 0
+    out = capsys.readouterr().out
+    assert "NOTICE: example-artist" in out
+    assert "last confirmed more than 90 days ago" in out
+    assert "FAILED" not in out
+
+
 HTML = """var PCA = {
     // GENERATED disciplines — tools/profiles.py rewrites this block
     disciplines: [
