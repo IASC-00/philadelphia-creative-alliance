@@ -124,6 +124,34 @@ def test_image_without_alt_text_is_an_error(tmp_path):
         load_profile(write_profile(tmp_path, works=[{"src": "w.jpg", "alt": ""}]))
 
 
+@pytest.mark.parametrize(
+    "src",
+    [
+        "../originals/piece.jpg",
+        "../../etc/passwd",
+        "/etc/passwd",
+        "sub/dir/piece.jpg",
+        ".",
+        "..",
+    ],
+)
+def test_image_src_outside_intake_is_an_error(tmp_path, src):
+    """`src` is joined onto intake/ verbatim by tools/profile_images.py, so a
+    directory component reads an image from outside intake/ and publishes it
+    into img/artists/<slug>/ — which is not gitignored, so it gets committed.
+    The slug got a strict regex after ".." once overwrote the homepage; this
+    is the same class of hand-transcribed value."""
+    works = [{"src": src, "alt": "Somewhere it should not be."}]
+    with pytest.raises(ProfileError, match="bare filename"):
+        load_profile(write_profile(tmp_path, works=works))
+
+
+def test_portrait_src_outside_intake_is_an_error(tmp_path):
+    portrait = {"src": "../originals/me.jpg", "alt": "A portrait."}
+    with pytest.raises(ProfileError, match="bare filename"):
+        load_profile(write_profile(tmp_path, portrait=portrait))
+
+
 def test_missing_consent_flag_is_an_error(tmp_path):
     consent = {"listed": True, "images": False, "date": "2026-07-26"}
     with pytest.raises(ProfileError, match="consent"):

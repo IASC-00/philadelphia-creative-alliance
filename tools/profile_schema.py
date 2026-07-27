@@ -109,10 +109,27 @@ def _require(data: dict, field: str):
 
 
 def _image(raw: dict, where: str) -> Work:
+    """One submitted image entry, validated.
+
+    `src` names a file inside intake/ and nothing else. It is joined onto the
+    intake directory verbatim by tools/profile_images.py, so anything with a
+    directory component in it — `../originals/piece.jpg`, an absolute path —
+    reads an image from outside intake/ and publishes it into
+    img/artists/<slug>/, which is *not* gitignored and therefore gets
+    committed. The slug got a strict regex after `..` once overwrote the
+    homepage; this is the same class of value and needs the same treatment.
+    Plausible by operator accident, not only by malice: these paths are
+    transcribed by hand alongside the rest of the profile.
+    """
     src = raw.get("src", "")
     alt = raw.get("alt", "")
     if not src:
         raise ProfileError(f"{where}: missing src")
+    if src in (".", "..") or Path(src).name != src:
+        raise ProfileError(
+            f"{where}: src {src!r} must be a bare filename inside intake/, "
+            "with no directory part"
+        )
     if not alt.strip():
         raise ProfileError(f"{where}: missing alt text")
     return Work(

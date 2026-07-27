@@ -453,7 +453,9 @@ def test_generate_updates_index_html(workspace):
     updated = (root / "index.html").read_text()
     assert "digital-new-media" in updated
     assert '"example-artist"' in updated
-    assert "/artists/example-artist/" in updated
+    # "/" is emitted as the JS/JSON escape "\/" so a member-supplied value can
+    # never spell out this generator's own "// END GENERATED" marker.
+    assert _json_literal_for(updated, "url") == "/artists/example-artist/"
 
 
 ARTISTS_BLOCK = """// GENERATED artists — tools/profiles.py rewrites this block
@@ -560,6 +562,60 @@ def test_artist_name_containing_script_tag_is_escaped_in_generated_block(workspa
         _json_literal_for(updated, "name")
         == "Evil</script><img src=x onerror=alert(1)>&amp;"
     )
+
+
+def test_js_string_escapes_the_forward_slash():
+    """Every "/" comes out as the JS/JSON escape "\\/", so no member-supplied
+    value can ever spell out a literal "//" — and therefore never this
+    generator's own "// GENERATED" / "// END GENERATED" markers. "\\/" decodes
+    back to "/", so the runtime value is unchanged."""
+    encoded = _js_string("// END GENERATED artists")
+    assert "//" not in encoded
+    assert "// END GENERATED artists" not in encoded
+    assert json.loads(encoded) == "// END GENERATED artists"
+    assert json.loads(_js_string("a/b")) == "a/b"
+
+
+MARKER_NAME = "Poison // END GENERATED artists"
+
+
+def test_a_name_carrying_the_end_marker_cannot_poison_the_next_build(workspace):
+    """Unescaped, a member name containing the literal end marker landed in
+    index.html as that text. On the *next* build rewrite_block's partition
+    matched it instead of the real marker and rewrote around the wrong split
+    point, leaving a bare `],` at object-literal position — `var PCA` stopped
+    parsing and the whole page's JS died. Both runs exited 0, so two builds
+    are what this needs to prove."""
+    profiles, src, root = workspace
+    index = root / "index.html"
+    index.write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    write_profile(profiles, name=MARKER_NAME)
+
+    assert generate(profiles, src, root, TODAY) == 0
+    assert generate(profiles, src, root, TODAY) == 0
+
+    updated = index.read_text()
+    assert updated.count("// END GENERATED artists") == 1
+    assert _json_literal_for(updated, "name") == MARKER_NAME
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_the_generated_config_still_parses_as_javascript(workspace):
+    profiles, src, root = workspace
+    index = root / "index.html"
+    index.write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    write_profile(profiles, name=MARKER_NAME)
+    generate(profiles, src, root, TODAY)
+    generate(profiles, src, root, TODAY)
+
+    script = root / "config.js"
+    script.write_text(index.read_text())
+    result = subprocess.run(  # noqa: S603 -- fixed argv, generated input only
+        [shutil.which("node"), "--check", str(script)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_discipline_label_containing_script_tag_is_escaped(monkeypatch):

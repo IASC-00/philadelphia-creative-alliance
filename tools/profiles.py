@@ -99,7 +99,9 @@ def _js_string(value: str) -> str:
     inside an inline <script> element, not merely inside a JS expression.
 
     `json.dumps` already handles quotes and backslashes correctly for the
-    JS string-literal context, but it does nothing about `<`, `>`, or `&`.
+    JS string-literal context, but it does nothing about `<`, `>`, `&`, or
+    `/`.
+
     A value containing the literal substring `</script>` would close the
     surrounding <script> tag at the HTML-parser level — regardless of how
     correctly it's escaped as a JS string — and let arbitrary markup run
@@ -107,15 +109,28 @@ def _js_string(value: str) -> str:
     reaches this function) are transcribed by hand from what applicants
     type, so this is a reachable vector, not a theoretical one.
 
-    Re-encoding those three characters as \\uXXXX escapes keeps the result
-    valid JS (any \\uXXXX escape is legal inside a JS string literal, so
-    this can't break parsing) and leaves the decoded runtime value exactly
-    unchanged, while making it impossible for the HTML parser to ever see
-    another `<`, `>`, or `&` in the output.
+    `/` is the same class of problem one layer down, against this
+    generator's own markers rather than the HTML parser. A name containing
+    `// END GENERATED artists` lands in index.html as exactly that text, and
+    on the *next* run rewrite_block's `partition` matches it instead of the
+    real marker and rewrites around the wrong split point. The tail is then
+    swallowed by the `//` comment, leaving a bare `],` at object-literal
+    position: `var PCA` stops parsing, and with it the org wall, the
+    discipline grid, the roster, both join forms and the donate button.
+    Both runs exit 0.
+
+    Re-encoding all four keeps the result valid JS — `\\uXXXX` and `\\/` are
+    both legal inside a JS (and JSON) string literal, so this can't break
+    parsing — and leaves the decoded runtime value exactly unchanged, while
+    making it impossible for the HTML parser, or a later pass of this
+    generator, to see another `<`, `>`, `&`, or `/` in the output.
     """
     encoded = json.dumps(value)
     return (
-        encoded.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+        encoded.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("/", "\\/")
     )
 
 
