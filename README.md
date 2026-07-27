@@ -78,3 +78,15 @@ Part of the Alliance? Add the badge to your site's footer:
 ```html
 <a href="https://philadelphiacreativealliance.com">Member · Philadelphia Creative Alliance</a>
 ```
+
+## Artist profiles
+
+Profiles are data. `profiles/<slug>.json` is the source of truth; `tools/profiles.py`
+renders `artists/<slug>/index.html` and processes imagery into `img/artists/<slug>/`.
+
+    python3 tools/profiles.py           # build
+    python3 tools/profiles.py --check   # verify committed output is current
+
+Submitted originals go in `intake/` and are not published — only the processed WebP is.
+A profile without a recorded `consent` block will not build. Set `live: false` to take a
+profile down without deleting its record.

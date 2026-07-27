@@ -5,3 +5,6 @@ __pycache__/
 DESIGN.md
 docs/superpowers/
 .worktrees/
+# submitted originals — only the processed WebP is published
+intake/*
+!intake/.gitkeep
