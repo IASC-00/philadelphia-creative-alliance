@@ -61,11 +61,6 @@ PCA.orgs = [
 ];
 ```
 
-**Artists are not.** `PCA.artists` and `PCA.disciplines` sit between `// GENERATED` markers and
-are rewritten from `profiles/*.json` every time `tools/profiles.py` runs — an entry added by hand
-there renders a blank discipline and is erased on the next build. Add an artist by writing a
-profile and running the generator; see [Artist profiles](#artist-profiles) below.
-
 `type` must match a `slug` in `PCA.orgTypes`, which also names its tile texture
 (`img/tile-<slug>.webp`). An unrecognised slug is skipped rather than rendered broken. Each
 organisation added claims its slot; kinds with no member keep showing an open invitation.
@@ -73,6 +68,11 @@ organisation added claims its slot; kinds with no member keep showing an open in
 `url` is filtered to `http:`/`https:` before it reaches the DOM — anything else is dropped and the
 tile falls back to the join form. Don't remove that check: these values are transcribed by hand
 from what an applicant typed.
+
+**Artists are not hand-edited.** `PCA.artists` and `PCA.disciplines` sit between `// GENERATED`
+markers and are rewritten from `profiles/*.json` every time `tools/profiles.py` runs — an entry
+added by hand there renders a blank discipline and is erased on the next build. Add an artist by
+writing a profile and running the generator; see [Artist profiles](#artist-profiles) below.
 
 ## Members
 
@@ -94,8 +94,9 @@ rewrites the `disciplines` and `artists` blocks in `index.html` between their
 
 To add an artist: write `profiles/<slug>.json`, drop their submitted images in `intake/`,
 run the generator, and commit what it produced. `disciplines` is an array of one to three
-slugs from the taxonomy in `tools/profile_schema.py` — not a free-text label. A profile
-without a recorded `consent` block will not build.
+slugs from the taxonomy in `tools/profile_schema.py` — not a free-text label. Each image
+`src` is a bare filename in `intake/`, never a path. A profile without a recorded `consent`
+block will not build.
 
 Submitted originals stay in `intake/`, which is gitignored — only the processed WebP is
 published. Because of that, `--check` can only rebuild and compare imagery where those
