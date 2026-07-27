@@ -189,15 +189,15 @@ def test_stylesheet_covers_every_class_the_renderer_emits():
 
 def test_stylesheet_defines_contrast_safe_accent_surface_tokens():
     css = (REPO / "artists" / "profile.css").read_text()
-    # Verify the four token names appear (base, light, and dark variants)
+    # Verify both tokens appear somewhere in the file
     for token in ("--accent-surface", "--on-accent"):
         assert token in css, f"stylesheet has no {token} definition"
-    # Verify both data-theme overrides define the tokens to prevent silent drift
-    assert (
-        '[data-theme="dark"]' in css
-        and "--accent-surface" in css.split('[data-theme="dark"]')[1].split("}")[0]
-    )
-    assert (
-        '[data-theme="light"]' in css
-        and "--accent-surface" in css.split('[data-theme="light"]')[1].split("}")[0]
-    )
+
+    # Extract the data-theme blocks
+    dark_block = css.split('[data-theme="dark"]')[1].split("}")[0]
+    light_block = css.split('[data-theme="light"]')[1].split("}")[0]
+
+    # Verify both tokens are defined in both data-theme blocks to prevent silent drift
+    for token in ("--accent-surface", "--on-accent"):
+        assert token in dark_block, f'[data-theme="dark"] missing {token}'
+        assert token in light_block, f'[data-theme="light"] missing {token}'
