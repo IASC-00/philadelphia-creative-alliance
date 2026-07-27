@@ -73,22 +73,51 @@ def rewrite_block(html: str, marker: str, body: str) -> str:
     return f"{head}{start}{opener}{body}\n    {end}{tail}"
 
 
+def _js_string(value: str) -> str:
+    """Encode `value` as a JS string literal that is also safe to embed
+    inside an inline <script> element, not merely inside a JS expression.
+
+    `json.dumps` already handles quotes and backslashes correctly for the
+    JS string-literal context, but it does nothing about `<`, `>`, or `&`.
+    A value containing the literal substring `</script>` would close the
+    surrounding <script> tag at the HTML-parser level — regardless of how
+    correctly it's escaped as a JS string — and let arbitrary markup run
+    right after it. Member names (and, in principle, anything else that
+    reaches this function) are transcribed by hand from what applicants
+    type, so this is a reachable vector, not a theoretical one.
+
+    Re-encoding those three characters as \\uXXXX escapes keeps the result
+    valid JS (any \\uXXXX escape is legal inside a JS string literal, so
+    this can't break parsing) and leaves the decoded runtime value exactly
+    unchanged, while making it impossible for the HTML parser to ever see
+    another `<`, `>`, or `&` in the output.
+    """
+    encoded = json.dumps(value)
+    return (
+        encoded.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    )
+
+
 def render_config_blocks(profiles) -> dict[str, str]:
     """Render the `disciplines` and `artists` array literals for the `PCA`
     config block in index.html, from the taxonomy and the live profile list.
 
-    String values are `json.dumps`-encoded rather than hand-quoted: artist
-    names and labels are member-supplied text, so a name containing a quote
-    or a backslash must not be able to break out of the JS string literal.
+    Every interpolated value — slugs and URLs included, not only names and
+    labels — goes through `_js_string()` rather than hand-quoting. Slugs are
+    validated elsewhere (DISCIPLINES is a fixed constant; profile slugs are
+    constrained by tools/profile_schema.py's slug regex), but applying the
+    same escaping uniformly means this function stays safe on its own terms
+    even if that upstream validation ever changes, rather than depending on
+    every caller to keep it that way.
     """
     disciplines = ",\n".join(
-        f"      {{ slug:'{d.slug}', label:{json.dumps(d.label)}, t:{d.t} }}"
+        f"      {{ slug:{_js_string(d.slug)}, label:{_js_string(d.label)}, t:{d.t} }}"
         for d in DISCIPLINES
     )
     artist_entries = [
-        f"      {{ slug:'{p.slug}', name:{json.dumps(p.name)}, "
-        f"disciplines:{json.dumps(list(p.disciplines))}, "
-        f"url:'/artists/{p.slug}/' }}"
+        f"      {{ slug:{_js_string(p.slug)}, name:{_js_string(p.name)}, "
+        f"disciplines:[{', '.join(_js_string(s) for s in p.disciplines)}], "
+        f"url:{_js_string(f'/artists/{p.slug}/')} }}"
         for p in profiles
     ]
     # A genuinely empty roster (DISCIPLINES is never empty, but zero live

@@ -1,5 +1,7 @@
 # ruff: noqa: S101
 import json
+import re
+import shutil
 import subprocess
 import sys
 from datetime import date
@@ -9,8 +11,8 @@ import pytest
 from PIL import Image
 
 from tools.mosaic import ROOT
-from tools.profile_schema import DISCIPLINES
-from tools.profiles import check, generate
+from tools.profile_schema import Availability, Discipline, DISCIPLINES, Profile
+from tools.profiles import _js_string, check, generate, render_config_blocks
 
 from tests.test_profile_schema import write_profile
 
@@ -300,7 +302,7 @@ def test_generate_updates_index_html(workspace):
     generate(profiles, src, root, TODAY)
     updated = (root / "index.html").read_text()
     assert "digital-new-media" in updated
-    assert "'example-artist'" in updated
+    assert '"example-artist"' in updated
     assert "/artists/example-artist/" in updated
 
 
@@ -333,7 +335,7 @@ def test_generate_with_no_profiles_still_rewrites_config_blocks(workspace):
 
     updated = (root / "index.html").read_text()
     for d in DISCIPLINES:
-        assert f"slug:'{d.slug}'" in updated
+        assert f'slug:"{d.slug}"' in updated
     assert "artists: [],\n    // END GENERATED artists" in updated
 
 
@@ -355,3 +357,141 @@ def test_documented_script_invocation_does_not_fail_on_import():
     )
     assert "ModuleNotFoundError" not in result.stderr
     assert "Traceback" not in result.stderr
+
+
+# --- HTML-script-context escaping ------------------------------------------
+#
+# json.dumps() alone is not enough for a value embedded in an inline <script>
+# element: it escapes quotes and backslashes correctly for the JS
+# string-literal context, but does nothing about "<", ">", or "&" -- a value
+# containing the literal substring "</script>" closes the surrounding
+# <script> tag at the HTML-parser level regardless of how it's escaped as a
+# JS string. Member names are transcribed by hand from what applicants type,
+# so this is a reachable vector. Every test below proves both halves of the
+# fix at once: the raw "<"/">"/"&" characters never reach the output, and a
+# round-trip through json.loads() on the extracted literal recovers the
+# exact original value -- which is only possible if the escaped form is
+# still valid JS/JSON string syntax.
+
+
+def _json_literal_for(body: str, key: str) -> str:
+    """Pull the `key:"...js string..."` literal for `key` out of a rendered
+    config block body and decode it with json.loads(). \\uXXXX escapes are
+    valid JSON, so this both proves the emitted text still parses as a
+    string literal and recovers the exact runtime value it decodes to."""
+    match = re.search(rf'{key}:("(?:[^"\\]|\\.)*")', body)
+    assert match, f'no {key}:"..." literal found in {body!r}'
+    return json.loads(match.group(1))
+
+
+def test_js_string_escapes_script_breakout_characters():
+    raw = "Evil</script><img src=x onerror=alert(1)>&amp;"
+    encoded = _js_string(raw)
+    assert "<" not in encoded
+    assert ">" not in encoded
+    assert "&" not in encoded
+    assert json.loads(encoded) == raw
+
+
+def test_artist_name_containing_script_tag_is_escaped_in_generated_block(workspace):
+    profiles, src, root = workspace
+    (root / "index.html").write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    write_profile(profiles, name="Evil</script><img src=x onerror=alert(1)>&amp;")
+    assert generate(profiles, src, root, TODAY) == 0
+
+    updated = (root / "index.html").read_text()
+    assert (
+        "</script>"
+        not in updated.split("// GENERATED artists", 1)[1].split(
+            "// END GENERATED artists", 1
+        )[0]
+    )
+    assert (
+        _json_literal_for(updated, "name")
+        == "Evil</script><img src=x onerror=alert(1)>&amp;"
+    )
+
+
+def test_discipline_label_containing_script_tag_is_escaped(monkeypatch):
+    import tools.profiles as profiles_module
+
+    evil = Discipline(
+        slug="evil", label="Evil</script><img onerror=alert(1)>", hue="vermilion", t=1
+    )
+    monkeypatch.setattr(profiles_module, "DISCIPLINES", [evil])
+    blocks = render_config_blocks([])
+    assert "</script>" not in blocks["disciplines"]
+    assert _json_literal_for(blocks["disciplines"], "label") == evil.label
+
+
+def test_artist_url_containing_script_tag_is_escaped():
+    """The url field is built from p.slug, which tools/profile_schema.py's
+    slug regex already keeps free of special characters -- but
+    render_config_blocks escapes it anyway (see its docstring), so this
+    constructs a Profile directly (bypassing that upstream validation) to
+    prove the escaping holds on its own, not only because callers happen to
+    behave."""
+    p = Profile(
+        slug="x</script><img onerror=alert(1)>",
+        name="Direct",
+        disciplines=("painters",),
+        tagline="t",
+        bio=(),
+        location="",
+        portrait=None,
+        works=(),
+        links=(),
+        availability=Availability(status="open", openTo=(), updated="2026-07-26"),
+        consent={},
+        joined="",
+        live=True,
+    )
+    blocks = render_config_blocks([p])
+    assert "</script>" not in blocks["artists"]
+    assert _json_literal_for(blocks["artists"], "url") == f"/artists/{p.slug}/"
+
+
+# --- disciplineLabels() (index.html client-side JS) ------------------------
+
+DISCIPLINE_LABELS_JS = """
+  function disciplineLabels(slugs) {
+    var out = [];
+    (slugs || []).forEach(function (slug) {
+      for (var i = 0; i < PCA.disciplines.length; i++) {
+        if (PCA.disciplines[i].slug === slug) { out.push(PCA.disciplines[i].label); break; }
+      }
+    });
+    return out.join(', ');
+  }"""
+
+
+def test_discipline_labels_js_is_byte_identical_in_index_html():
+    """Guards against the Node-executed copy below drifting from what
+    index.html actually ships -- if someone edits the real function without
+    updating this fixture, this fails loudly instead of the test below
+    quietly validating stale logic."""
+    html = (ROOT / "index.html").read_text()
+    assert DISCIPLINE_LABELS_JS in html
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_discipline_labels_joins_two_and_skips_an_unknown_slug():
+    script = (
+        "global.PCA = { disciplines: ["
+        "{ slug: 'painters', label: 'Painters' },"
+        "{ slug: 'sculptors', label: 'Sculptors' }"
+        "] };" + DISCIPLINE_LABELS_JS + "\nconsole.log(JSON.stringify({"
+        "two: disciplineLabels(['painters', 'sculptors']),"
+        "unknown: disciplineLabels(['does-not-exist']),"
+        "}));"
+    )
+    result = subprocess.run(  # noqa: S603 -- fixed script, no untrusted input
+        [shutil.which("node"), "-e", script],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    out = json.loads(result.stdout)
+    assert out["two"] == "Painters, Sculptors"
+    assert out["unknown"] == ""
+    assert "undefined" not in out["unknown"]
