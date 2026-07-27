@@ -38,13 +38,20 @@ ARTIST_MANIFEST = Path("img/artists/manifest.json")
 
 
 def _build(profiles_dir: Path, src_dir: Path, root: Path, today: date):
-    """Load every live profile and render its page and images.
+    """Load every profile and render pages and images for the live ones.
 
     Shared by generate() and check(): check() rebuilds instead of trusting
     that generate() was run, since a matching manifest is what proves the
     committed bytes are the ones this generator currently produces.
+
+    Returns `(all_profiles, live, pages, manifest)`. `all_profiles` (before
+    the `live` filter) is what generate() uses to tell "no profile files were
+    found at all" — almost certainly a misconfigured path — apart from "every
+    profile that exists happens to be marked not live," which is a legitimate
+    editorial choice and must still publish (i.e. prune) correctly.
     """
-    live = [p for p in load_all(profiles_dir) if p.live]
+    all_profiles = load_all(profiles_dir)
+    live = [p for p in all_profiles if p.live]
     pages: dict[str, str] = {}
     manifest: dict[str, dict] = {}
     for profile in live:
@@ -52,61 +59,134 @@ def _build(profiles_dir: Path, src_dir: Path, root: Path, today: date):
             process_profile_images(profile, src_dir, Path(root) / "img" / "artists")
         )
         pages[profile.slug] = render_profile(profile, today)
-    return live, pages, manifest
-
-
-def _remove_stale_profile_dirs(root: Path, live_slugs: set[str]) -> None:
-    """Prune artists/<slug>/ and img/artists/<slug>/ for profiles that are no
-    longer live (removed, or flipped to live: false).
-
-    Only ever removes directories, never files. artists/profile.css — the
-    shared stylesheet — lives in this same artists/ directory, so an
-    `is_dir()` guard is what keeps this pass from ever reaching it.
-    """
-    artists_dir = root / "artists"
-    if not artists_dir.exists():
-        return
-    for existing in artists_dir.iterdir():
-        if existing.is_dir() and existing.name not in live_slugs:
-            shutil.rmtree(existing)
-            images = root / "img" / "artists" / existing.name
-            if images.exists():
-                shutil.rmtree(images)
-            print(f"  removed artists/{existing.name}")
-
-
-def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
-    root = Path(root)
-    try:
-        live, pages, manifest = _build(profiles_dir, src_dir, root, today)
-    except (ProfileError, FileNotFoundError) as exc:
-        print(f"FAILED: {exc}")
-        return 1
-
-    artists_dir = root / "artists"
-    artists_dir.mkdir(parents=True, exist_ok=True)
-    slugs = {p.slug for p in live}
-
-    _remove_stale_profile_dirs(root, slugs)
-
-    for slug, html in pages.items():
-        target = artists_dir / slug / "index.html"
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(html, encoding="utf-8")
-        manifest[f"{slug}/index.html"] = {"sha256": _sha256_of_text(html)}
-        print(f"  artists/{slug}/index.html")
-
-    manifest_path = root / ARTIST_MANIFEST
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    print(f"\n  {len(pages)} profiles, {len(manifest)} manifest entries")
-    return 0
+    return all_profiles, live, pages, manifest
 
 
 def _sha256_of_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _previously_known_slugs(manifest_path: Path) -> set[str]:
+    """Slugs this generator has published before, per the last committed
+    manifest. Only these are ever eligible for removal — a directory under
+    artists/ that was never in the manifest was not created by this tool and
+    is not ours to delete, no matter what it's named.
+
+    A missing or unreadable manifest yields an empty set, which is the safe
+    direction: nothing gets pruned rather than guessing.
+    """
+    if not manifest_path.exists():
+        return set()
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (ValueError, TypeError):
+        return set()
+    if not isinstance(manifest, dict):
+        return set()
+    return {
+        key.rsplit("/", 1)[0]
+        for key in manifest
+        if isinstance(key, str) and key.endswith("/index.html")
+    }
+
+
+def _remove_stale_profile_dirs(
+    root: Path, live_slugs: set[str], known_slugs: set[str]
+) -> None:
+    """Prune artists/<slug>/ and img/artists/<slug>/ for slugs this tool has
+    previously published (`known_slugs`) that are no longer live — removed
+    entirely, or flipped to `live: false`.
+
+    Three guards, each closing a distinct way this pass could destroy
+    something it shouldn't:
+      - `known_slugs` scoping: a directory that was never in a previously
+        committed manifest (artists/profile.css's directory, a hand-made
+        artists/_shared/, ...) is never touched, regardless of its name.
+      - `is_symlink()`: checked before `is_dir()`, because `Path.is_dir()`
+        follows symlinks and would otherwise let a symlinked directory
+        through the guard straight into `shutil.rmtree`, which raises on a
+        symlink rather than silently doing something safe.
+      - `is_dir()`: only directories are ever removed, never plain files.
+    """
+    artists_dir = root / "artists"
+    if not artists_dir.exists():
+        return
+    for existing in sorted(artists_dir.iterdir()):
+        if existing.is_symlink():
+            continue
+        if not existing.is_dir():
+            continue
+        if existing.name not in known_slugs:
+            continue
+        if existing.name in live_slugs:
+            continue
+        shutil.rmtree(existing)
+        images = root / "img" / "artists" / existing.name
+        if images.exists() and not images.is_symlink():
+            shutil.rmtree(images)
+        print(f"  removed artists/{existing.name}")
+
+
+def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
+    """Build every live profile's page and images, and prune stale ones.
+
+    Builds entirely into an isolated scratch directory first, and only moves
+    anything into `root` once every live profile has succeeded — a missing
+    intake image for the *second* of two profiles must not leave the first
+    profile's images sitting in `root` with no page or manifest entry for
+    them, which is what writing directly into `root` during the build loop
+    would do.
+    """
+    root = Path(root)
+    with tempfile.TemporaryDirectory() as scratch_str:
+        scratch = Path(scratch_str)
+        try:
+            all_profiles, live, pages, manifest = _build(
+                profiles_dir, src_dir, scratch, today
+            )
+        except (ProfileError, FileNotFoundError) as exc:
+            print(f"FAILED: {exc}")
+            return 1
+
+        if not all_profiles:
+            print(
+                f"FAILED: no profile files found in {profiles_dir} — refusing to "
+                "prune every published page. If the source directory really is "
+                "meant to be empty, that needs an explicit opt-in, not a silent "
+                "wipe."
+            )
+            return 1
+
+        slugs = {p.slug for p in live}
+        known = _previously_known_slugs(root / ARTIST_MANIFEST)
+        _remove_stale_profile_dirs(root, slugs, known)
+
+        artists_dir = root / "artists"
+        artists_dir.mkdir(parents=True, exist_ok=True)
+        images_root = root / "img" / "artists"
+        images_root.mkdir(parents=True, exist_ok=True)
+        scratch_images_root = scratch / "img" / "artists"
+
+        for slug in slugs:
+            dest = images_root / slug
+            if dest.exists() and not dest.is_symlink():
+                shutil.rmtree(dest)
+            shutil.move(str(scratch_images_root / slug), str(dest))
+
+        for slug, html in pages.items():
+            target = artists_dir / slug / "index.html"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(html, encoding="utf-8")
+            manifest[f"{slug}/index.html"] = {"sha256": _sha256_of_text(html)}
+            print(f"  artists/{slug}/index.html")
+
+        manifest_path = root / ARTIST_MANIFEST
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(f"\n  {len(pages)} profiles, {len(manifest)} manifest entries")
+        return 0
 
 
 def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
@@ -133,7 +213,7 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
 
     with tempfile.TemporaryDirectory() as scratch:
         try:
-            _live, pages, fresh_manifest = _build(
+            _all, _live, pages, fresh_manifest = _build(
                 profiles_dir, src_dir, Path(scratch), today
             )
         except (ProfileError, FileNotFoundError) as exc:
@@ -143,27 +223,38 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
     for slug, html in pages.items():
         fresh_manifest[f"{slug}/index.html"] = {"sha256": _sha256_of_text(html)}
 
-    committed = json.loads(manifest_path.read_text(encoding="utf-8"))
-    failures = []
+    try:
+        committed = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(committed, dict):
+            raise TypeError(f"expected an object, got {type(committed).__name__}")
 
-    for key in sorted(set(fresh_manifest) | set(committed)):
-        if key not in committed:
-            failures.append(f"{key}: missing from the committed manifest (stale)")
-        elif key not in fresh_manifest:
-            failures.append(f"{key}: in the committed manifest but no longer produced")
-        elif fresh_manifest[key]["sha256"] != committed[key]["sha256"]:
-            failures.append(f"{key}: manifest does not match a fresh rebuild (stale)")
+        failures = []
 
-    for key, entry in committed.items():
-        if key.endswith("index.html"):
-            slug = key.rsplit("/", 1)[0]
-            target = root / "artists" / slug / "index.html"
-        else:
-            target = root / "img" / "artists" / key
-        if not target.exists():
-            failures.append(f"{key}: missing")
-        elif sha256_of(target) != entry["sha256"]:
-            failures.append(f"{key}: does not match manifest (stale or replaced)")
+        for key in sorted(set(fresh_manifest) | set(committed)):
+            if key not in committed:
+                failures.append(f"{key}: missing from the committed manifest (stale)")
+            elif key not in fresh_manifest:
+                failures.append(
+                    f"{key}: in the committed manifest but no longer produced"
+                )
+            elif fresh_manifest[key]["sha256"] != committed[key]["sha256"]:
+                failures.append(
+                    f"{key}: manifest does not match a fresh rebuild (stale)"
+                )
+
+        for key, entry in committed.items():
+            if key.endswith("index.html"):
+                slug = key.rsplit("/", 1)[0]
+                target = root / "artists" / slug / "index.html"
+            else:
+                target = root / "img" / "artists" / key
+            if not target.exists():
+                failures.append(f"{key}: missing")
+            elif sha256_of(target) != entry["sha256"]:
+                failures.append(f"{key}: does not match manifest (stale or replaced)")
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        print(f"FAILED: manifest is unreadable ({exc})")
+        return 1
 
     if failures:
         print("\nFAILED:")

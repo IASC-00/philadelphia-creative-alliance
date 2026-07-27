@@ -1,6 +1,7 @@
 # ruff: noqa: S101
 import json
 from datetime import date
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -64,9 +65,11 @@ def test_live_false_removes_a_previously_built_page(workspace):
     profiles, src, root = workspace
     write_profile(profiles)
     generate(profiles, src, root, TODAY)
+    assert (root / "img" / "artists" / "example-artist").exists()
     write_profile(profiles, live=False)
     assert generate(profiles, src, root, TODAY) == 0
     assert not (root / "artists" / "example-artist").exists()
+    assert not (root / "img" / "artists" / "example-artist").exists()
 
 
 def test_generate_fails_loudly_on_an_invalid_profile(workspace):
@@ -126,3 +129,123 @@ def test_check_fails_when_a_profile_was_removed_but_not_regenerated(workspace):
     generate(profiles, src, root, TODAY)
     (profiles / "example-artist.json").unlink()
     assert check(profiles, src, root, TODAY) == 1
+
+
+def _snapshot(root: Path) -> dict:
+    """Every regular file under root, by relative path, with its exact bytes."""
+    return {
+        str(p.relative_to(root)): p.read_bytes()
+        for p in sorted(root.rglob("*"))
+        if p.is_file()
+    }
+
+
+def test_check_leaves_root_byte_for_byte_unchanged(workspace):
+    """The load-bearing property behind fixing the healing bug: check() must
+    never write anything under root, not just avoid getting fooled by a
+    tampered file. A whole-tree snapshot proves this generally, rather than
+    only for the specific swap/edit cases exercised elsewhere in this file."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    before = _snapshot(root)
+    assert check(profiles, src, root, TODAY) == 0
+    assert _snapshot(root) == before
+
+
+def test_generate_does_not_prune_a_non_slug_directory_or_a_symlink(workspace, tmp_path):
+    """The removal pass only touches slugs this tool has previously published
+    (per the committed manifest). A hand-made directory that was never in
+    that manifest, and a symlink (which `Path.is_dir()` would otherwise
+    follow straight into a crashing `shutil.rmtree`), must both survive —
+    proven with a live profile already on disk, so the removal pass has
+    something real to walk past rather than finding an empty artists/."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+
+    stray_dir = root / "artists" / "_shared"
+    stray_dir.mkdir()
+    (stray_dir / "keep.txt").write_text("keep me")
+
+    link_target = tmp_path / "elsewhere"
+    link_target.mkdir()
+    (link_target / "file.txt").write_text("linked content")
+    symlink = root / "artists" / "linked"
+    symlink.symlink_to(link_target, target_is_directory=True)
+
+    assert generate(profiles, src, root, TODAY) == 0
+    assert stray_dir.exists()
+    assert (stray_dir / "keep.txt").read_text() == "keep me"
+    assert symlink.is_symlink()
+    assert (symlink / "file.txt").read_text() == "linked content"
+
+
+def test_generate_refuses_to_prune_when_no_profile_files_exist(workspace):
+    """A profiles/ directory with zero *.json files in it is almost always a
+    misconfigured path, not a deliberate 'unpublish everything.' Distinct
+    from every profile being live:false (a real editorial choice captured in
+    real files), which must still publish and prune correctly — see
+    test_live_false_removes_a_previously_built_page."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert (root / "artists" / "example-artist").exists()
+
+    for f in profiles.iterdir():
+        f.unlink()
+    assert generate(profiles, src, root, TODAY) == 1
+    assert (root / "artists" / "example-artist").exists()
+    assert (root / "img" / "artists" / "example-artist").exists()
+
+
+def test_generate_refuses_to_prune_when_profiles_dir_is_missing(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+    assert (root / "artists" / "example-artist").exists()
+
+    missing = profiles.parent / "does-not-exist"
+    assert generate(missing, src, root, TODAY) == 1
+    assert (root / "artists" / "example-artist").exists()
+    assert (root / "img" / "artists" / "example-artist").exists()
+
+
+def test_check_fails_cleanly_on_a_corrupt_manifest(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    (root / "img" / "artists" / "manifest.json").write_text("not valid json{")
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_fails_cleanly_when_a_manifest_entry_is_malformed(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    (root / "img" / "artists" / "manifest.json").write_text(
+        json.dumps({"example-artist/index.html": "not-a-dict"})
+    )
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_generate_leaves_no_images_behind_when_a_later_profile_fails(workspace):
+    """Images used to be written straight into root inside _build's
+    per-profile loop, so a missing intake image on the *second* profile left
+    the first profile's images on disk with no page or manifest entry for
+    them — a partial publish. generate() now builds entirely into a scratch
+    directory first and only moves anything into root once every profile has
+    succeeded."""
+    profiles, src, root = workspace
+    write_profile(profiles, slug="first", name="First Artist")
+    write_profile(
+        profiles,
+        slug="second",
+        name="Second Artist",
+        portrait=None,
+        works=[{"src": "missing.jpg", "alt": "Nowhere to be found."}],
+    )
+    assert generate(profiles, src, root, TODAY) == 1
+    assert not (root / "artists" / "first").exists()
+    assert not (root / "img" / "artists" / "first").exists()
+    assert not (root / "img" / "artists" / "manifest.json").exists()

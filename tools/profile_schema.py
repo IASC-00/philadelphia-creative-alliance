@@ -195,6 +195,15 @@ def slugify(name: str) -> str:
     return hyphenated.strip("-")
 
 
+# A slug becomes a path segment (artists/<slug>/index.html, img/artists/<slug>/) in
+# tools/profiles.py, so it must never contain "/", "..", or anything else a
+# filesystem would treat specially. slugify()'s own output always satisfies this
+# (it collapses every run of non-alnum characters to a single hyphen and strips
+# leading/trailing hyphens), so this check applies uniformly to derived and
+# hand-set slugs without narrowing what a derived slug can be.
+_SLUG_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+
+
 def load_all(directory: Path) -> list[Profile]:
     profiles = []
     seen: dict[str, Path] = {}
@@ -209,6 +218,11 @@ def load_all(directory: Path) -> list[Profile]:
                 f"{path.name}: name produces an empty slug — set one by hand"
             )
         slug = slug.strip()
+        if not _SLUG_RE.fullmatch(slug):
+            raise ProfileError(
+                f"{path.name}: slug {slug!r} must be lowercase letters, digits, "
+                "and single hyphens only — it becomes a filesystem path segment"
+            )
         if slug in seen:
             raise ProfileError(
                 f"slug collision on {slug!r}: {seen[slug].name} and {path.name} — "

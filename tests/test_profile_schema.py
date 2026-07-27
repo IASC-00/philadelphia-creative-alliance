@@ -199,6 +199,32 @@ def test_padded_explicit_slug_is_stripped(tmp_path):
     assert profiles[0].slug == "jane-doe"
 
 
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "..",
+        "../escape",
+        "jane/doe",
+        "/etc/passwd",
+        "Jane-Doe",
+        "jane doe",
+        "-leading-hyphen",
+        "trailing-hyphen-",
+    ],
+)
+def test_unsafe_or_malformed_explicit_slug_is_an_error(tmp_path, slug):
+    """A slug becomes a filesystem path segment in tools/profiles.py
+    (artists/<slug>/index.html, img/artists/<slug>/). An explicit slug of
+    ".." previously wrote straight through to artists/../index.html —
+    silently overwriting the site's homepage. write_profile() can't be used
+    here since it names the file after the slug itself, which breaks for a
+    slug containing "/"."""
+    data = {**VALID, "slug": slug}
+    (tmp_path / "profile.json").write_text(json.dumps(data))
+    with pytest.raises(ProfileError, match="slug"):
+        load_all(tmp_path)
+
+
 # Availability staleness tests
 
 from datetime import date
