@@ -10,9 +10,17 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
+import tools.profiles as profiles_module
 from tools.mosaic import ROOT
 from tools.profile_schema import Availability, Discipline, DISCIPLINES, Profile
-from tools.profiles import _js_string, check, generate, render_config_blocks
+from tools.profiles import (
+    _js_string,
+    _swap_into_place,
+    check,
+    generate,
+    render_config_blocks,
+    rewrite_block,
+)
 
 from tests.test_profile_schema import write_profile
 
@@ -263,8 +271,150 @@ def test_generate_leaves_no_images_behind_when_a_later_profile_fails(workspace):
     assert not (root / "img" / "artists" / "manifest.json").exists()
 
 
-# append to tests/test_profiles_cli.py
-from tools.profiles import rewrite_block
+# --- filesystem safety -----------------------------------------------------
+
+
+def test_deleting_the_last_profile_record_keeps_its_manifest_entry(workspace):
+    """The manifest is the only record of what has been published, and
+    _previously_known_slugs reads it to decide what may ever be pruned.
+    Overwriting it with the (empty) set produced by a run whose prune was
+    skipped wiped that record: the member's page and photos stayed on disk,
+    nothing could prune them afterwards, and the documented `live: false`
+    takedown stopped working too — all while exiting 0."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    assert generate(profiles, src, root, TODAY) == 0
+
+    (profiles / "example-artist.json").unlink()
+    assert generate(profiles, src, root, TODAY) == 0
+
+    manifest = json.loads((root / "img" / "artists" / "manifest.json").read_text())
+    assert "example-artist/index.html" in manifest
+    assert "example-artist/work-01.webp" in manifest
+
+
+def test_the_skipped_prune_warning_names_the_takedown_procedure(workspace, capsys):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    (profiles / "example-artist.json").unlink()
+    capsys.readouterr()
+
+    assert generate(profiles, src, root, TODAY) == 0
+    warning = capsys.readouterr().out
+    assert '"live": false' in warning
+    assert "Deleting the record instead leaves the published page" in warning
+
+
+def _strand_a_page(profiles, root):
+    """The exact state the wiped-manifest bug produced: a published page and
+    its photos on disk, the member's record gone, and nothing in the manifest
+    referring to either. Reached by hand here because the bug that produced
+    it is fixed. With no record left there is nothing to render, so the
+    page-staleness comparison has nothing to say — only the orphan guard can
+    see this."""
+    (profiles / "example-artist.json").unlink()
+    (root / "img" / "artists" / "manifest.json").write_text("{}")
+
+
+def test_check_fails_on_a_published_page_with_no_manifest_entry(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _strand_a_page(profiles, root)
+
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_reports_the_orphan_by_name(workspace, capsys):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _strand_a_page(profiles, root)
+    capsys.readouterr()
+
+    check(profiles, src, root, TODAY)
+    out = capsys.readouterr().out
+    assert "artists/example-artist/index.html" in out
+    assert "orphaned page" in out
+
+
+def test_check_does_not_call_a_hand_made_directory_an_orphan(workspace):
+    """The prune is forbidden to touch a directory it never published, so the
+    orphan report must not flag one either — it is anchored on a published
+    index.html, not on the directory existing."""
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    shared = root / "artists" / "_shared"
+    shared.mkdir()
+    (shared / "partial.html").write_text("<p>not a published page</p>")
+
+    assert check(profiles, src, root, TODAY) == 0
+
+
+def test_swap_into_place_replaces_the_directory_and_leaves_no_staging(tmp_path):
+    built = tmp_path / "scratch" / "artist"
+    built.mkdir(parents=True)
+    (built / "new.webp").write_bytes(b"new")
+    dest = tmp_path / "live" / "artist"
+    dest.mkdir(parents=True)
+    (dest / "old.webp").write_bytes(b"old")
+
+    _swap_into_place(built, dest)
+
+    assert (dest / "new.webp").read_bytes() == b"new"
+    assert not (dest / "old.webp").exists()
+    assert [p.name for p in sorted(dest.parent.iterdir())] == ["artist"]
+
+
+def test_swap_into_place_keeps_the_live_directory_when_the_move_fails(
+    tmp_path, monkeypatch
+):
+    """The move loop used to rmtree the destination and *then* move the
+    replacement in, with no staging and no rollback. The scratch tree is a
+    TemporaryDirectory, usually on another filesystem, so that move is a real
+    copy — a failure partway through (or a Ctrl-C in the window) deleted an
+    already-published artist's images and put nothing back."""
+    built = tmp_path / "scratch" / "artist"
+    built.mkdir(parents=True)
+    (built / "new.webp").write_bytes(b"new")
+    dest = tmp_path / "live" / "artist"
+    dest.mkdir(parents=True)
+    (dest / "old.webp").write_bytes(b"old")
+
+    def no_space(*_args, **_kwargs):
+        raise OSError("no space left on device")
+
+    monkeypatch.setattr(profiles_module.shutil, "move", no_space)
+    with pytest.raises(OSError, match="no space"):
+        _swap_into_place(built, dest)
+
+    assert (dest / "old.webp").read_bytes() == b"old"
+
+
+BROKEN_ARTISTS_BLOCK = """// GENERATED artists — tools/profiles.py rewrites this block
+    artists: [],"""
+
+
+def test_a_failure_writing_index_html_leaves_the_published_page_in_place(workspace):
+    """The prune used to run before anything was written, so any failure
+    afterwards left the live site linking to pages that had already been
+    deleted. Proven with the reviewer's case: an index.html whose end marker
+    has been dropped, which rewrite_block raises on by design."""
+    profiles, src, root = workspace
+    write_profile(profiles, slug="first", name="First Artist")
+    assert generate(profiles, src, root, TODAY) == 0
+    assert (root / "artists" / "first" / "index.html").exists()
+
+    (profiles / "first.json").unlink()
+    write_profile(profiles, slug="second", name="Second Artist")
+    (root / "index.html").write_text(HTML.replace("artists: []", BROKEN_ARTISTS_BLOCK))
+
+    with pytest.raises(ValueError, match="marker"):
+        generate(profiles, src, root, TODAY)
+
+    assert (root / "artists" / "first" / "index.html").exists()
 
 
 HTML = """var PCA = {
