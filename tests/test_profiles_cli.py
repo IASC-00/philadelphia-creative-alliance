@@ -650,17 +650,33 @@ def test_rewrite_block_errors_when_markers_are_absent():
         rewrite_block("var PCA = {};", "disciplines", "x")
 
 
+def _artists_block_of(html: str) -> str:
+    """Only the text between the artists markers.
+
+    Asserting against the whole file is what let the multi-discipline
+    contract go untested: `"digital-new-media" in updated` is satisfied by
+    the taxonomy block, which always contains all 14 slugs no matter what the
+    artist entry says."""
+    return html.split("// GENERATED artists", 1)[1].split(
+        "// END GENERATED artists", 1
+    )[0]
+
+
 def test_generate_updates_index_html(workspace):
     profiles, src, root = workspace
     (root / "index.html").write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
-    write_profile(profiles)
+    write_profile(profiles, disciplines=["digital-new-media", "painters"])
     generate(profiles, src, root, TODAY)
     updated = (root / "index.html").read_text()
-    assert "digital-new-media" in updated
-    assert '"example-artist"' in updated
+    block = _artists_block_of(updated)
+
+    assert '"example-artist"' in block
+    # The roster carries an array of every discipline the member picked, in
+    # the order they picked them -- not a single singular `discipline` field.
+    assert 'disciplines:["digital-new-media", "painters"]' in block
     # "/" is emitted as the JS/JSON escape "\/" so a member-supplied value can
     # never spell out this generator's own "// END GENERATED" marker.
-    assert _json_literal_for(updated, "url") == "/artists/example-artist/"
+    assert _json_literal_for(block, "url") == "/artists/example-artist/"
 
 
 ARTISTS_BLOCK = """// GENERATED artists — tools/profiles.py rewrites this block

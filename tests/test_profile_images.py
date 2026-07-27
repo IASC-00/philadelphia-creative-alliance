@@ -149,8 +149,10 @@ def test_fallback_tile_is_deterministic_per_slug(tmp_path):
 
 
 def test_fallback_tile_uses_the_first_discipline_hue(tmp_path):
-    profile = load_profile(write_profile(tmp_path, disciplines=["painters"]))
-    other = load_profile(
-        write_profile(tmp_path, slug="b", name="B", disciplines=["sculptors"])
-    )
-    assert fallback_tile(profile).tobytes() != fallback_tile(other).tobytes()
+    """The slug must be held constant. build_org_tile is seeded from the slug,
+    so varying both slug and discipline (as this test used to) is satisfied by
+    the slug difference alone — a hue-blind implementation passed it."""
+    painter = load_profile(write_profile(tmp_path, disciplines=["painters"]))
+    sculptor = load_profile(write_profile(tmp_path, disciplines=["sculptors"]))
+    assert painter.slug == sculptor.slug
+    assert fallback_tile(painter).tobytes() != fallback_tile(sculptor).tobytes()

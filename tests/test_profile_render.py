@@ -23,6 +23,22 @@ def test_renders_a_complete_document(tmp_path):
     assert "Digital &amp; new media" in html
 
 
+def test_every_discipline_renders_its_own_chip_in_order(tmp_path):
+    """No fixture had more than one discipline, so the multi-discipline
+    contract was untested end to end: reducing the renderer to the first
+    label alone survived the whole suite. The chips must be one per
+    discipline, in the order the member picked them."""
+    profile = load_profile(
+        write_profile(tmp_path, disciplines=["digital-new-media", "painters"])
+    )
+    html = render_profile(profile, TODAY)
+    assert (
+        '<li class="tag">Digital &amp; new media</li><li class="tag">Painters</li>'
+        in html
+    )
+    assert html.count('<li class="tag">') == 2
+
+
 def test_escapes_markup_in_the_name(tmp_path):
     profile = load_profile(write_profile(tmp_path, name="<script>alert(1)</script>"))
     html = render_profile(profile, TODAY)
@@ -201,3 +217,59 @@ def test_stylesheet_defines_contrast_safe_accent_surface_tokens():
     for token in ("--accent-surface", "--on-accent"):
         assert token in dark_block, f'[data-theme="dark"] missing {token}'
         assert token in light_block, f'[data-theme="light"] missing {token}'
+
+
+def _declarations(block: str) -> dict[str, str]:
+    out = {}
+    for declaration in block.split(";"):
+        name, sep, value = declaration.partition(":")
+        if sep and name.strip().startswith("--"):
+            out[name.strip()] = value.strip()
+    return out
+
+
+def _resolve(name: str, block: dict, root: dict) -> str:
+    """A token's literal hex, following one level of `var(--other)` back to
+    the :root block — which is exactly the indirection profile.css uses
+    (`--on-accent: var(--paper)`)."""
+    value = block.get(name) or root[name]
+    match = re.fullmatch(r"var\((--[a-z-]+)\)", value)
+    return (root[match.group(1)] if match else value).strip()
+
+
+def _relative_luminance(hex_colour: str) -> float:
+    """WCAG 2.x relative luminance. sRGB channels are linearised with the
+    same 0.03928 / 12.92 / 2.4 curve the spec gives."""
+    raw = hex_colour.lstrip("#")
+    channels = [int(raw[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    linear = [
+        c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast_ratio(one: str, two: str) -> float:
+    a, b = _relative_luminance(one), _relative_luminance(two)
+    lighter, darker = max(a, b), min(a, b)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def test_accent_surface_meets_wcag_aa_in_both_themes():
+    """Asserting the token *names* exist says nothing about the colours: a
+    regression to a failing pair passes that test unchanged. The ratio is
+    computed here from the committed hex values instead, so the numbers are
+    what is guarded, not the spelling."""
+    css = (REPO / "artists" / "profile.css").read_text()
+    root = _declarations(css.split(":root {", 1)[1].split("}", 1)[0])
+    themes = {
+        "dark": _declarations(css.split('[data-theme="dark"]')[1].split("}")[0]),
+        "light": _declarations(css.split('[data-theme="light"]')[1].split("}")[0]),
+    }
+    for theme, block in themes.items():
+        surface = _resolve("--accent-surface", block, root)
+        on_accent = _resolve("--on-accent", block, root)
+        ratio = _contrast_ratio(surface, on_accent)
+        assert ratio >= 4.5, (
+            f"{theme}: {on_accent} on {surface} is {ratio:.2f}:1, below the "
+            "4.5:1 WCAG AA minimum for body text"
+        )
