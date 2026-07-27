@@ -249,3 +249,51 @@ def test_generate_leaves_no_images_behind_when_a_later_profile_fails(workspace):
     assert not (root / "artists" / "first").exists()
     assert not (root / "img" / "artists" / "first").exists()
     assert not (root / "img" / "artists" / "manifest.json").exists()
+
+
+# append to tests/test_profiles_cli.py
+from tools.profiles import rewrite_block
+
+
+HTML = """var PCA = {
+    // GENERATED disciplines — tools/profiles.py rewrites this block
+    disciplines: [
+      { slug:'old', label:'Old', t:1 }
+    ],
+    // END GENERATED disciplines
+    artists: []
+  };"""
+
+
+def test_rewrite_block_replaces_only_between_markers():
+    out = rewrite_block(HTML, "disciplines", "      REPLACED")
+    assert "REPLACED" in out
+    assert "{ slug:'old'" not in out
+    assert "var PCA = {" in out
+    assert "artists: []" in out
+
+
+def test_rewrite_block_is_idempotent():
+    once = rewrite_block(HTML, "disciplines", "      REPLACED")
+    assert rewrite_block(once, "disciplines", "      REPLACED") == once
+
+
+def test_rewrite_block_errors_when_markers_are_absent():
+    with pytest.raises(ValueError, match="marker"):
+        rewrite_block("var PCA = {};", "disciplines", "x")
+
+
+def test_generate_updates_index_html(workspace):
+    profiles, src, root = workspace
+    (root / "index.html").write_text(HTML.replace("artists: []", ARTISTS_BLOCK))
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    updated = (root / "index.html").read_text()
+    assert "digital-new-media" in updated
+    assert "'example-artist'" in updated
+    assert "/artists/example-artist/" in updated
+
+
+ARTISTS_BLOCK = """// GENERATED artists — tools/profiles.py rewrites this block
+    artists: [],
+    // END GENERATED artists"""

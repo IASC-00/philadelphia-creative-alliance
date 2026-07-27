@@ -30,11 +30,60 @@ from pathlib import Path
 from tools.mosaic import ROOT, sha256_of
 from tools.profile_images import process_profile_images
 from tools.profile_render import render_profile
-from tools.profile_schema import ProfileError, load_all
+from tools.profile_schema import DISCIPLINES, ProfileError, load_all
 
 PROFILES_DIR = ROOT / "profiles"
 INTAKE_DIR = ROOT / "intake"
 ARTIST_MANIFEST = Path("img/artists/manifest.json")
+
+
+def rewrite_block(html: str, marker: str, body: str) -> str:
+    """Replace the text between a `// GENERATED <marker>` /
+    `// END GENERATED <marker>` marker pair with `body`.
+
+    Idempotent: re-running with the same body reproduces the exact same
+    output, because the region between the markers (including whatever
+    trailing comment text followed the opening marker on its first run) is
+    fully replaced each time, never appended to or diffed against.
+
+    Missing markers are an error, never a silent no-op — a hand-edited or
+    misconfigured index.html must fail loudly rather than have this pass
+    quietly do nothing while reporting success.
+    """
+    start = f"// GENERATED {marker}"
+    end = f"// END GENERATED {marker}"
+    head, sep, rest = html.partition(start)
+    if not sep:
+        raise ValueError(f"marker not found: {start}")
+    _stale, sep2, tail = rest.partition(end)
+    if not sep2:
+        raise ValueError(f"marker not found: {end}")
+    opener = " — tools/profiles.py rewrites this block, do not hand-edit\n"
+    return f"{head}{start}{opener}{body}\n    {end}{tail}"
+
+
+def render_config_blocks(profiles) -> dict[str, str]:
+    """Render the `disciplines` and `artists` array literals for the `PCA`
+    config block in index.html, from the taxonomy and the live profile list.
+
+    String values are `json.dumps`-encoded rather than hand-quoted: artist
+    names and labels are member-supplied text, so a name containing a quote
+    or a backslash must not be able to break out of the JS string literal.
+    """
+    disciplines = ",\n".join(
+        f"      {{ slug:'{d.slug}', label:{json.dumps(d.label)}, t:{d.t} }}"
+        for d in DISCIPLINES
+    )
+    artists = ",\n".join(
+        f"      {{ slug:'{p.slug}', name:{json.dumps(p.name)}, "
+        f"disciplines:{json.dumps(list(p.disciplines))}, "
+        f"url:'/artists/{p.slug}/' }}"
+        for p in profiles
+    )
+    return {
+        "disciplines": f"    disciplines: [\n{disciplines}\n    ],",
+        "artists": f"    artists: [\n{artists}\n    ],",
+    }
 
 
 def _build(profiles_dir: Path, src_dir: Path, root: Path, today: date):
@@ -186,6 +235,15 @@ def generate(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         print(f"\n  {len(pages)} profiles, {len(manifest)} manifest entries")
+
+        index = root / "index.html"
+        if index.exists():
+            html = index.read_text()
+            for marker, body in render_config_blocks(live).items():
+                html = rewrite_block(html, marker, body)
+            index.write_text(html)
+            print("  index.html config blocks updated")
+
         return 0
 
 
