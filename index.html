@@ -283,6 +283,7 @@
   .amount-row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1.2rem 0; }
   .amount { font-family:var(--mono); font-size:.8rem; padding:.55rem .9rem; border:1px solid var(--line); border-radius:2px; cursor:pointer; background:transparent; color:var(--ink); }
   .amount:hover, .amount[aria-pressed="true"]{ border-color:var(--accent); color:var(--accent); }
+  .amount:disabled { cursor:not-allowed; border-color:var(--line); color:var(--ink-soft); }
   .note { font-size:.82rem; color:var(--ink-soft); font-family:var(--mono); letter-spacing:.02em; }
   .ways { list-style:none; padding:0; margin:1.2rem 0 0; }
   .ways li { border-top:1px solid var(--line); padding:.7rem 0; font-size:.95rem; color:var(--ink-soft); }
@@ -528,7 +529,7 @@
           <button type="button" class="amount" aria-pressed="false">Other</button>
         </div>
         <a class="btn solid" href="#" id="donate" style="width:100%; justify-content:center;">Chip in</a>
-        <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first, so the button below does nothing for now. For space, print or a referral, use the join form above and say which one.</p>
+        <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first, so the button above does nothing for now. For space, print or a referral, use the join form above and say which one.</p>
       </div>
     </div>
   </section>
@@ -856,6 +857,8 @@
   // --- donation --------------------------------------------------------------
   function initDonate() {
     document.querySelectorAll('.amount').forEach(function (b) {
+      // With no donation link the amounts can't matter; don't let them look live.
+      if (!PCA.donateUrl) { b.disabled = true; return; }
       b.addEventListener('click', function () {
         document.querySelectorAll('.amount').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
         b.setAttribute('aria-pressed', 'true');
