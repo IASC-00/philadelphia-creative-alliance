@@ -773,6 +773,12 @@
     if (window.location.hash === '#join-artist') openArtistTab();
     window.addEventListener('hashchange', function () {
       if (window.location.hash === '#join-artist') openArtistTab();
+      else if (window.location.hash === '#join') select(0, false);
+    });
+    // Every organization door (hero, header Join, wall tiles) points at #join.
+    // Without this, a visitor who opened the artist tab first gets the artist form.
+    document.querySelectorAll('a[href="#join"]').forEach(function (a) {
+      a.addEventListener('click', function () { select(0, false); });
     });
   }
 
