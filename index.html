@@ -692,6 +692,9 @@
       PCA.disciplines.forEach(function (d) {
         var a = el('a', null);
         a.href = '#join-artist';   // opens the free artist form, not the org one
+        a.addEventListener('click', function () {
+          var sel = byId('ad'); if (sel) sel.value = d.label;   // carry the chip's discipline into the form
+        });
         var dot = el('span', 'dot');
         dot.style.background = 'var(--t' + (d.t || 1) + ')';
         dot.setAttribute('aria-hidden', 'true');
