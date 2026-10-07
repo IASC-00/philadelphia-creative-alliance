@@ -721,6 +721,9 @@
   function fillSelects() {
     var kind = byId('ok');
     if (kind) {
+      // No silent default: without this every organization is filed as "Music & sound".
+      var ph = new Option('Choose one', ''); ph.disabled = true; ph.selected = true;
+      kind.appendChild(ph); kind.required = true;
       PCA.orgTypes.forEach(function (t) {
         kind.appendChild(new Option(t.label, t.label));
       });
