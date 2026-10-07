@@ -1,4 +1,4 @@
+# Working draft with no members yet: keep it out of search engines until launch.
+# At launch: restore "Allow: /" + the Sitemap line, and remove the robots meta tags.
 User-agent: *
-Allow: /
-
-Sitemap: https://philadelphiacreativealliance.com/sitemap.xml
+Disallow: /
