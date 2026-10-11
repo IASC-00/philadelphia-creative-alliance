@@ -308,7 +308,20 @@
   .foot .k { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
   .foot h3 { font-size:1.35rem; max-width:30ch; }
   .draft-tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:2px; padding:.3rem .55rem; }
+
+  /* ---------- 44px touch targets on phones and tablets ---------- */
+  @media (max-width: 1024px) {
+    .skip { min-height:44px; display:inline-flex; align-items:center; }
+    .brand { min-height:44px; }
+    .nav a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; }
+    .btn, .tabs button, .amount { min-height:44px; }
+    .amount { min-width:44px; }
+    .chipgrid a { display:inline-flex; align-items:center; min-height:44px; }
+    .badge-demo { min-height:44px; }
+  }
 </style>
+<link rel="stylesheet" href="css/intro.css">
+<script src="js/intro.js" defer></script>
 </head>
 <body>
 
