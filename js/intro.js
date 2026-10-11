@@ -19,6 +19,13 @@
   }
   var root = document.documentElement;
   root.classList.add('pca-intro', 'pca-intro-cover');
+  // Wall-clock failsafe (exit-gate 11 Oct): independent of the animation loop, so a render
+  // error or a very slow device can never leave the cover or the scroll lock up past FAILSAFE
+  // seconds of visible time. Off in ?introtest seek mode, which never auto-advances.
+  var wallVisible = 0, wallLast = performance.now(), wallTimer = setInterval(function () {
+    var n = performance.now(); if (!document.hidden) wallVisible += (n - wallLast) / 1000; wallLast = n;
+    if (!TEST && wallVisible >= FAILSAFE) finish();
+  }, 250);
   var here = (document.currentScript && document.currentScript.src) || location.href;
   var url3d = new URL('intro3d.js', here).href;
 
@@ -145,7 +152,7 @@
           if (avg > 50) { run2d(); return; }
         }
       }
-      scene3d.render(Math.min(t, END));
+      try { scene3d.render(Math.min(t, END)); } catch (e) { run2d(); }
     }
     if (t >= END || visible >= FAILSAFE) { finish(); return; }
     raf = requestAnimationFrame(tick);
@@ -154,6 +161,7 @@
 
   function finish() {
     if (done) return; done = true;
+    clearInterval(wallTimer);
     cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey, true);
     if (scene3d) { try { scene3d.dispose(); } catch (e) {} scene3d = null; }
