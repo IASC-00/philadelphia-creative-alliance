@@ -2,16 +2,19 @@
    first paint. Plays once per tab on the home page; never on a #link, never with reduced
    motion. Tries the 3D scene (js/intro3d.js, loaded only now); anything wrong with it
    (no WebGL, load error, lost context, a device too slow to keep up) runs the 2D version.
-   Test hook: ?introtest=1 exposes window.__introSeek(seconds) and never auto-advances.
+   Test hooks: ?introtest=1 exposes window.__introSeek(seconds) and never auto-advances;
+   ?introtest=rt plays in real time as a first visit would (ignores once-per-tab, #links and
+   reduced motion, for recording); ?introtest=2d is the same with the 2D version forced.
    Also ?intro2d=1 (force 2D) and ?introguard=0 (no slow-device check). */
 (function () {
   'use strict';
-  var KEY = 'pcaIntroSeen', END = 6.3, FAILSAFE = 9, LOAD_WAIT = 2.6;
+  var KEY = 'pcaIntroSeen', END = 6.0, FAILSAFE = 9, LOAD_WAIT = 2.6;
   var q = location.search;
-  var TEST = /[?&]introtest=1\b/.test(q), FORCE2D = /[?&]intro2d=1\b/.test(q), GUARD = !/[?&]introguard=0\b/.test(q);
+  var TEST = /[?&]introtest=1\b/.test(q), RT = /[?&]introtest=(rt|2d)\b/.test(q);
+  var FORCE2D = /[?&](intro2d=1|introtest=2d)\b/.test(q), GUARD = !/[?&]introguard=0\b/.test(q);
   var path = location.pathname;
   if (!(path === '/' || /\/index\.html$/.test(path))) return;
-  if (!TEST) {
+  if (!TEST && !RT) {
     if (location.hash && location.hash !== '#') return;
     try { if (sessionStorage.getItem(KEY)) return; } catch (e) {}
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -42,9 +45,8 @@
   function build() {
     ov = document.createElement('div');
     ov.className = 'pi-ov';
-    ov.innerHTML = '<div class="pi-cells" aria-hidden="true"></div>' +
-      '<div class="pi-2d" aria-hidden="true"><div class="pi-art2"><div class="pi-city"></div>' +
-      '<svg class="pi-lines"></svg><p class="pi-words"></p></div></div>' +
+    ov.innerHTML = '<div class="pi-2d" aria-hidden="true"><div class="pi-city"></div><svg class="pi-lines"></svg>' +
+      '<div class="pi-cells"></div><div class="pi-ring"></div><div class="pi-mark"></div><p class="pi-words"></p></div>' +
       '<button class="pi-skip" type="button">Skip intro</button>';
     document.body.insertBefore(ov, document.body.firstChild);
     root.classList.remove('pca-intro-cover');
@@ -59,7 +61,10 @@
 
   function onKey(e) { if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); finish(); } }
 
-  /* ---------- 2D fallback: lights across a city grid connect, then set into the mark ---------- */
+  /* ---------- 2D fallback: the same beats as the 3D version, drawn with CSS + SVG ----------
+     lights across a city grid connect, run hot, converge and lock into the mark (ring), the name
+     rises in letter by letter, the page's ground is laid tile by tile, the mark flies into the
+     header chips and the overlay fades onto the page. Timings match CONFIG.time in intro3d.js. */
   var built2d = false;
   function run2d() {
     if (scene3d) { try { scene3d.dispose(); } catch (e) {} scene3d = null; }
@@ -68,14 +73,16 @@
     ov.classList.remove('is-3d'); ov.classList.add('is-2d');
     var W = innerWidth, H = innerHeight, portrait = W / H < 0.9, R = rng(7);
     var HUE = ['#EC4A2C', '#2F63E6', '#F2B01E', '#DB2F86'];
-    var art = ov.querySelector('.pi-art2'), svg = ov.querySelector('.pi-lines'), words = ov.querySelector('.pi-words');
+    var markEl = ov.querySelector('.pi-mark'), svg = ov.querySelector('.pi-lines'), words = ov.querySelector('.pi-words');
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     // the mark: 2x2 chips of 3x3 tesserae, like the header's four chips
     var s = Math.round(Math.min(portrait ? W * 0.075 : W * 0.032, H * 0.06, 34)), g = Math.max(2, Math.round(s * 0.18)), G = Math.round(s * 0.45);
     var chip = 3 * s + 2 * g, markW = 2 * chip + G;
     var fs = Math.round(s * 1.02), lineH = fs * 1.28, textW = fs * 0.62 * 1.1 * 12, textH = lineH * 3;
     words.style.setProperty('--pi-fs', fs + 'px');
-    words.textContent = 'Philadelphia\nCreative\nAlliance';
+    words.innerHTML = ['Philadelphia', 'Creative', 'Alliance'].map(function (w, line) {
+      return w.split('').map(function (ch, n) { return '<span style="--i:' + (line * 3 + n) + '">' + ch + '</span>'; }).join('');
+    }).join('\n');
     var mx, my, wx, wy;
     if (portrait) {
       var totH = markW + s * 1.4 + textH;
@@ -86,6 +93,17 @@
       mx = (W - totW) / 2; my = (H - markW) / 2; wx = mx + markW + s * 1.6; wy = my + (markW - textH) / 2;
     }
     words.style.left = wx + 'px'; words.style.top = wy + 'px'; words.style.width = textW + 'px';
+    var cxm = mx + markW / 2, cym = my + markW / 2;
+    // the mark settles into the live header chips
+    markEl.style.transformOrigin = cxm + 'px ' + cym + 'px';
+    var ce = document.querySelector('.topbar .brand .chips'), cr = ce && ce.getBoundingClientRect();
+    if (cr && cr.width > 2 && cr.bottom > 0 && cr.top < H) {
+      markEl.style.setProperty('--fx', (cr.left + cr.width / 2 - cxm).toFixed(1) + 'px');
+      markEl.style.setProperty('--fy', (cr.top + cr.height / 2 - cym).toFixed(1) + 'px');
+      markEl.style.setProperty('--fk', (cr.width / markW).toFixed(4));
+    }
+    var ring = ov.querySelector('.pi-ring');
+    ring.style.left = cxm + 'px'; ring.style.top = cym + 'px'; ring.style.setProperty('--rs', markW + 'px');
     // 36 lights spread across the screen (not too close), 9 of each mark colour
     var pts = [], tries = 0, minD = Math.sqrt(W * H / 36) * 0.62;
     while (pts.length < 36 && tries++ < 4000) {
@@ -101,12 +119,12 @@
       var h = cols[i], n = slot[h]++, cx = h % 2, cy = h > 1 ? 1 : 0;
       var tx = mx + cx * (chip + G) + (n % 3) * (s + g) + s / 2, ty = my + cy * (chip + G) + Math.floor(n / 3) * (s + g) + s / 2;
       html += '<i class="pi-dot" style="--c:' + HUE[h] + ';background:' + HUE[h] + ';left:' + p.x.toFixed(1) + 'px;top:' + p.y.toFixed(1) + 'px;' +
-        '--d1:' + (0.3 + i * 0.04).toFixed(2) + 's;--d2:' + (3.35 + R() * 0.45).toFixed(2) + 's;' +
-        '--tx:' + (tx - p.x).toFixed(1) + 'px;--ty:' + (ty - p.y).toFixed(1) + 'px;--ts:' + (s / 12).toFixed(3) + ';--tr:' + ((R() - 0.5) * 6).toFixed(1) + 'deg"></i>';
+        '--d1:' + (0.22 + i * 0.04).toFixed(2) + 's;--d2:' + (3.05 + Math.hypot(tx - cxm, ty - cym) / markW * 0.05).toFixed(3) + 's;' +
+        '--tx:' + (tx - p.x).toFixed(1) + 'px;--ty:' + (ty - p.y).toFixed(1) + 'px;--ts:' + (s / 12).toFixed(3) + '"></i>';
       p.h = h;
     });
-    art.insertAdjacentHTML('beforeend', html);
-    // network: the shortest set of threads that joins every light (grown from the first)
+    markEl.innerHTML = html;
+    // network: the shortest set of links that joins every light (grown from the first)
     var lines = '', inTree = [true], n = pts.length;
     for (var e = 1; e < n; e++) {
       var bestA = 0, bestB = 0, bd = 1e9;
@@ -115,15 +133,15 @@
       }
       inTree[bestB] = true;
       lines += '<line x1="' + pts[bestA].x.toFixed(1) + '" y1="' + pts[bestA].y.toFixed(1) + '" x2="' + pts[bestB].x.toFixed(1) + '" y2="' + pts[bestB].y.toFixed(1) +
-        '" stroke="' + HUE[pts[bestB].h] + '" style="--len:' + Math.ceil(bd) + ';--d1:' + (1.3 + e * 0.04).toFixed(2) + 's"/>';
+        '" stroke="' + HUE[pts[bestB].h] + '" style="--len:' + Math.ceil(bd) + ';--d1:' + (0.85 + e * 0.045).toFixed(2) + 's"/>';
     }
     svg.innerHTML = lines;
-    // the reveal: the dark is lifted tile by tile, starting at the mark
-    var cell = Math.ceil(Math.max(W, H) / 9), cells = '', cxm = mx + markW / 2, cym = my + markW / 2, far = Math.hypot(W, H);
+    // the hand-off: the page's own ground laid tile by tile, outward from the mark
+    var cell = Math.ceil(Math.max(W, H) / (portrait ? 9 : 16)), cells = '', far = Math.hypot(W, H);
     for (var yy = 0; yy < H; yy += cell) for (var xx = 0; xx < W; xx += cell) {
       var dd = Math.hypot(xx + cell / 2 - cxm, yy + cell / 2 - cym) / far;
       cells += '<i class="pi-cell" style="left:' + xx + 'px;top:' + yy + 'px;width:' + (cell + 1) + 'px;height:' + (cell + 1) + 'px;' +
-        '--d:' + (5.55 + dd * 0.45 + R() * 0.08).toFixed(2) + 's;--r:' + ((R() - 0.5) * 40).toFixed(0) + 'deg"></i>';
+        '--d:' + (5.0 + dd * 0.42 + R() * 0.07).toFixed(2) + 's;--r:' + ((R() - 0.5) * 50).toFixed(0) + 'deg"></i>';
     }
     ov.querySelector('.pi-cells').innerHTML = cells;
     if (TEST) { seek2d(t); exposeHook(); return; }
@@ -173,7 +191,8 @@
   /* ---------- 3D attempt ---------- */
   function webglOK() {
     try {
-      var c = document.createElement('canvas'), gl = c.getContext('webgl2') || c.getContext('webgl');
+      // three r169 is WebGL2-only: a WebGL1-only device goes straight to the 2D version
+      var c = document.createElement('canvas'), gl = c.getContext('webgl2');
       if (!gl) return false;
       var lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();
       return true;
@@ -199,6 +218,7 @@
   }
 
   function start() {
+    if (RT) window.__introMode = function () { return done ? 'done' : mode; };
     build();
     if (!FORCE2D && webglOK()) try3d(); else run2d();
   }
