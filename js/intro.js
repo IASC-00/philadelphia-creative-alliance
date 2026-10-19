@@ -8,7 +8,7 @@
    Also ?intro2d=1 (force 2D) and ?introguard=0 (no slow-device check). */
 (function () {
   'use strict';
-  var KEY = 'pcaIntroSeen', END = 6.0, FAILSAFE = 9, LOAD_WAIT = 2.6;
+  var KEY = 'pcaIntroSeen', END = 4.5, FAILSAFE = 6.75, LOAD_WAIT = 1.95;   // 18 Oct: 0.75x the 6 s cut
   var q = location.search;
   var TEST = /[?&]introtest=1\b/.test(q), RT = /[?&]introtest=(rt|2d)\b/.test(q);
   var FORCE2D = /[?&](intro2d=1|introtest=2d)\b/.test(q), GUARD = !/[?&]introguard=0\b/.test(q);
@@ -59,6 +59,17 @@
     });
   }
 
+  // the header chips where the page will have them: measured with the scroll lock off for a moment,
+  // so the scrollbar the page gets back after the intro is already accounted for
+  function chipRect() {
+    var ce = document.querySelector('.topbar .brand .chips'); if (!ce) return null;
+    var locked = root.classList.contains('pca-intro');
+    if (locked) root.classList.remove('pca-intro');
+    var r = ce.getBoundingClientRect();
+    if (locked) root.classList.add('pca-intro');
+    return r;
+  }
+
   function onKey(e) { if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); finish(); } }
 
   /* ---------- 2D fallback: the same beats as the 3D version, drawn with CSS + SVG ----------
@@ -96,7 +107,7 @@
     var cxm = mx + markW / 2, cym = my + markW / 2;
     // the mark settles into the live header chips
     markEl.style.transformOrigin = cxm + 'px ' + cym + 'px';
-    var ce = document.querySelector('.topbar .brand .chips'), cr = ce && ce.getBoundingClientRect();
+    var cr = chipRect();
     if (cr && cr.width > 2 && cr.bottom > 0 && cr.top < H) {
       markEl.style.setProperty('--fx', (cr.left + cr.width / 2 - cxm).toFixed(1) + 'px');
       markEl.style.setProperty('--fy', (cr.top + cr.height / 2 - cym).toFixed(1) + 'px');
@@ -119,7 +130,7 @@
       var h = cols[i], n = slot[h]++, cx = h % 2, cy = h > 1 ? 1 : 0;
       var tx = mx + cx * (chip + G) + (n % 3) * (s + g) + s / 2, ty = my + cy * (chip + G) + Math.floor(n / 3) * (s + g) + s / 2;
       html += '<i class="pi-dot" style="--c:' + HUE[h] + ';background:' + HUE[h] + ';left:' + p.x.toFixed(1) + 'px;top:' + p.y.toFixed(1) + 'px;' +
-        '--d1:' + (0.85 + i * 0.035).toFixed(2) + 's;--d2:' + (3.05 + Math.hypot(tx - cxm, ty - cym) / markW * 0.05).toFixed(3) + 's;' +
+        '--d1:' + (0.64 + i * 0.026).toFixed(3) + 's;--d2:' + (2.26 + Math.hypot(tx - cxm, ty - cym) / markW * 0.04).toFixed(3) + 's;' +
         '--tx:' + (tx - p.x).toFixed(1) + 'px;--ty:' + (ty - p.y).toFixed(1) + 'px;--ts:' + (s / 12).toFixed(3) + '"></i>';
       p.h = h;
     });
@@ -133,7 +144,7 @@
       }
       inTree[bestB] = true;
       lines += '<line x1="' + pts[bestA].x.toFixed(1) + '" y1="' + pts[bestA].y.toFixed(1) + '" x2="' + pts[bestB].x.toFixed(1) + '" y2="' + pts[bestB].y.toFixed(1) +
-        '" stroke="' + HUE[pts[bestB].h] + '" style="--len:' + Math.ceil(bd) + ';--d1:' + (1.20 + e * 0.035).toFixed(2) + 's"/>';
+        '" stroke="' + HUE[pts[bestB].h] + '" style="--len:' + Math.ceil(bd) + ';--d1:' + (0.90 + e * 0.026).toFixed(3) + 's"/>';
     }
     svg.innerHTML = lines;
     // the hand-off: the page's own ground laid tile by tile, outward from the mark
@@ -141,7 +152,7 @@
     for (var yy = 0; yy < H; yy += cell) for (var xx = 0; xx < W; xx += cell) {
       var dd = Math.hypot(xx + cell / 2 - cxm, yy + cell / 2 - cym) / far;
       cells += '<i class="pi-cell" style="left:' + xx + 'px;top:' + yy + 'px;width:' + (cell + 1) + 'px;height:' + (cell + 1) + 'px;' +
-        '--d:' + (5.0 + dd * 0.38 + R() * 0.07).toFixed(2) + 's;--r:' + ((R() - 0.5) * 50).toFixed(0) + 'deg"></i>';
+        '--d:' + (3.75 + dd * 0.29 + R() * 0.05).toFixed(2) + 's;--r:' + ((R() - 0.5) * 50).toFixed(0) + 'deg"></i>';
     }
     ov.querySelector('.pi-cells').innerHTML = cells;
     if (TEST) { seek2d(t); exposeHook(); return; }
@@ -164,14 +175,14 @@
     if (!document.hidden) { t += dt; visible += dt; }
     if (mode === '3d' && scene3d) {
       if (!guardDone) {
-        if (t >= 0.8) frames.push(now);
-        if (t >= 1.4) {
+        if (t >= 0.6) frames.push(now);
+        if (t >= 1.05) {
           guardDone = true;
           var avg = frames.length > 1 ? (frames[frames.length - 1] - frames[0]) / (frames.length - 1) : 0;
           if (avg > 50) { run2d(); return; }
         }
       }
-      try { scene3d.render(Math.min(t, END)); } catch (e) { run2d(); }
+      try { scene3d.render(Math.min(t, END)); } catch (e) { run2d(); return; }   // run2d started its own loop
     }
     if (t >= END || visible >= FAILSAFE) { finish(); return; }
     raf = requestAnimationFrame(tick);
@@ -210,7 +221,7 @@
     import(url3d).then(function (m) {
       if (settled || done) return;
       return m.create(ov, {
-        test: TEST,
+        test: TEST, chipRect: chipRect,
         onLost: function () { if (mode === '3d' && !done) run2d(); }
       }).then(function (sc) {
         if (settled || done) { sc.dispose(); return; }

@@ -1,6 +1,6 @@
 /* 3D homepage intro. Loaded by js/intro.js only when the intro plays (WebGL2 only).
 
-   The story, about six seconds:
+   The story, about four and a half seconds:
      1. Night over Center City: the grid between the two rivers, City Hall, the Parkway.
         Windows are lit and traffic draws light trails along the streets.
      2. Creative spaces light up one by one across the city, outward from Penn Square.
@@ -33,20 +33,21 @@ import { UnrealBloomPass } from './vendor/three/UnrealBloomPass.js';
 import { OutputPass } from './vendor/three/OutputPass.js';
 
 export const CONFIG = {
-  END: 6.0,                       // seconds; js/intro.js uses the same value
-  time: {
-    exposureIn: 0.35,             // snappy fade up from ambient floor
-    lightsFrom: 0.85, lightStep: 0.035,         // creative spaces light up as camera crests rooftops
-    linksFrom: 1.20, linkDepthStep: 0.14, linkDur: 0.42, extraLinksFrom: 1.90,
-    lift: 2.62,                   // lights lift off their roofs; links run white-hot
-    converge: 3.05,               // ...and accelerate towards the mark
-    lock: 3.65,                   // THE BEAT: all 36 lock into the mark
-    textIn: 3.72, letterStep: 0.02, letterDur: 0.65,
-    sweep: 4.18, sweepDur: 0.55,  // light sweep across the lockup
-    nameOut: 4.65, nameOutDur: 0.30, // wordmark dissolves before ground flood
-    flood: 5.0, floodSpread: 0.38, floodTile: 0.24,   // page ground laid tile by tile
-    fly: 4.85, flyDur: 0.52,      // mark flies into the header chips, docks, holds, then the fade
-    fade: 5.65,                   // canvas fades onto the page
+  END: 4.5,                       // seconds; js/intro.js uses the same value
+  pace: 0.75,                     // the short in-between durations below (pops, decays, fades) scale with this
+  time: {                         // 18 Oct: everything ~25% quicker than the 6 s cut; the convergence keeps 0.5 s
+    exposureIn: 0.26,             // snappy fade up from ambient floor
+    lightsFrom: 0.64, lightStep: 0.026,         // creative spaces light up as camera crests rooftops
+    linksFrom: 0.90, linkDepthStep: 0.105, linkDur: 0.32, extraLinksFrom: 1.43,
+    lift: 1.95,                   // lights lift off their roofs; links run white-hot
+    converge: 2.26,               // ...and accelerate towards the mark
+    lock: 2.76,                   // THE BEAT: all 36 lock into the mark
+    textIn: 2.80, letterStep: 0.015, letterDur: 0.49,
+    sweep: 3.14, sweepDur: 0.41,  // light sweep across the lockup
+    nameOut: 3.49, nameOutDur: 0.23, // wordmark dissolves before ground flood
+    flood: 3.75, floodSpread: 0.29, floodTile: 0.18,   // page ground laid tile by tile
+    fly: 3.64, flyDur: 0.39,      // mark flies into the header chips, docks, holds, then the fade
+    fade: 4.24,                   // canvas fades onto the page
   },
   color: {
     ink: 0x0c0a10,                // night sky overhead + clear colour
@@ -64,6 +65,7 @@ export const CONFIG = {
   post: {
     high: { maxPixelRatio: 2, samples: 4, bloom: { strength: 0.6, radius: 0.5, threshold: 0.92 }, tiltShift: 1.0, trails: 180, particlesPerLink: 28 },
     low: { maxPixelRatio: 1.5, samples: 2, bloom: { strength: 0.48, radius: 0.42, threshold: 0.95 }, tiltShift: 0, trails: 110, particlesPerLink: 14 },
+    maxPixels: 4.5e6,             // render-buffer cap (bufW * bufH), both tiers
     lockBloom: 0.4,               // extra bloom strength at the lock, decaying
     lockFlash: 0.16,              // extra exposure at the lock, decaying
     vignette: 0.42, grain: 0.022, ripple: 0.012,
@@ -71,7 +73,8 @@ export const CONFIG = {
   },
 };
 
-const T = CONFIG.time, C = CONFIG.color;
+const T = CONFIG.time, C = CONFIG.color, PC = CONFIG.pace;
+const pc = (x) => x * PC;   // a short in-between duration, at the intro's pace
 const MONO = 'ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, "DejaVu Sans Mono", monospace';
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -119,10 +122,21 @@ function pickTier() {
 
 const FS_VERT = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
 
+// create() never leaves a canvas, a GL context or a resize listener behind when it fails part-way
 export async function create(container, opts = {}) {
+  const undo = [];
+  try { return await build(container, opts, undo); } catch (e) {
+    for (const f of undo.reverse()) { try { f(); } catch (_) { /* best effort */ } }
+    throw e;
+  }
+}
+
+async function build(container, opts, undo) {
   const tierName = pickTier(), Q = CONFIG.post[tierName];
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.maxPixelRatio));
+  // pixel ratio capped by area too, so a large or high-DPI screen never renders more than ~4.5 MP per pass
+  const pixelRatio = () => Math.min(window.devicePixelRatio || 1, Q.maxPixelRatio, Math.sqrt(CONFIG.post.maxPixels / (innerWidth * innerHeight)));
+  renderer.setPixelRatio(pixelRatio());
   renderer.setSize(innerWidth, innerHeight, false);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.autoClear = false;
@@ -134,6 +148,7 @@ export async function create(container, opts = {}) {
   canvas.addEventListener('webglcontextlost', onLost);
   const skipEl = container.querySelector('.pi-skip');
   container.insertBefore(canvas, skipEl);
+  undo.push(() => { canvas.removeEventListener('webglcontextlost', onLost); renderer.dispose(); renderer.forceContextLoss(); canvas.remove(); });
 
   // the page we hand off to: its ground and ink, whichever theme it is in
   const GROUND = cssColor('--ground', '#E9E7E0'), INKC = cssColor('--ink', '#17131F');
@@ -331,7 +346,7 @@ export async function create(container, opts = {}) {
     return {
       mesh, mat, halo, glow, hue, axis, c, slot: slotCount[hue]++,
       home: new THREE.Vector3(b.x, b.h + 0.07, b.z),
-      lightAt: T.lightsFrom + byDist.indexOf(i) * T.lightStep, liftAt: T.lift + R() * 0.12,
+      lightAt: T.lightsFrom + byDist.indexOf(i) * T.lightStep, liftAt: T.lift + R() * pc(0.12),
       lockAt: T.lock, jitter: (R() - 0.5) * 0.05,
       target: new THREE.Vector3(), tq: new THREE.Quaternion(), local: new THREE.Vector2(), screenX: 0, cx: 0, cy: 0,
     };
@@ -347,7 +362,7 @@ export async function create(container, opts = {}) {
       const d = P(a).distanceTo(P(b)); if (d < bd) { bd = d; best = [a, b]; }
     }
     inTree[best[1]] = true; depth[best[1]] = depth[best[0]] + 1;
-    edges.push({ a: best[0], b: best[1], at: T.linksFrom + depth[best[0]] * T.linkDepthStep + R() * 0.07, dur: T.linkDur });
+    edges.push({ a: best[0], b: best[1], at: T.linksFrom + depth[best[0]] * T.linkDepthStep + R() * pc(0.07), dur: T.linkDur });
   }
   const has = (a, b) => edges.some((e) => (e.a === a && e.b === b) || (e.a === b && e.b === a));
   let extra = 0;
@@ -355,7 +370,7 @@ export async function create(container, opts = {}) {
     if (extra >= 12) break;
     let best = -1, bd = 3.8;
     for (let b = 0; b < N; b++) if (b !== a && !has(a, b)) { const d = P(a).distanceTo(P(b)); if (d < bd) { bd = d; best = b; } }
-    if (best >= 0) { edges.push({ a, b: best, at: T.extraLinksFrom + R() * 0.6, dur: T.linkDur + 0.05 }); extra++; }
+    if (best >= 0) { edges.push({ a, b: best, at: T.extraLinksFrom + R() * pc(0.6), dur: T.linkDur + pc(0.05) }); extra++; }
   }
   // the link itself: a thin tube that draws on, then glows with the colours of both ends
   const lineVS = 'varying float vU; void main(){ vU = uv.x; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
@@ -414,7 +429,7 @@ export async function create(container, opts = {}) {
       'void main(){',
       '  float prog = clamp((uT - aTime.x) / aTime.y, 0.0, 1.0); prog = 1.0 - pow(1.0 - prog, 3.0);',
       // flow along the link; once the links run hot the light rushes faster
-      '  float s = fract(aSeed.x + uT * aSeed.y + uHot * uHot * (uT - 2.5) * 1.6);',
+      '  float s = fract(aSeed.x + uT * aSeed.y / ' + PC.toFixed(3) + ' + uHot * uHot * (uT - ' + (T.lift - pc(0.12)).toFixed(3) + ') * ' + (1.6 / PC).toFixed(3) + ');',
       '  float k = 1.0 - s;',
       '  vec3 p = k * k * position + 2.0 * k * s * aM + s * s * aB;',
       '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
@@ -552,7 +567,7 @@ export async function create(container, opts = {}) {
       '  c += (hash(px + fract(uT * 7.0) * 91.0) - 0.5) * uGrain;',
       // ground tiles: each cell scales up and rotates into place, outward from the mark
       '  vec2 id = floor(px / uCell); vec2 ctr = (id + 0.5) * uCell; float h = hash(id);',
-      '  float st = ' + T.flood.toFixed(3) + ' + length(ctr - uCenter) / uFar * ' + T.floodSpread.toFixed(3) + ' + h * 0.07;',
+      '  float st = ' + T.flood.toFixed(3) + ' + length(ctr - uCenter) / uFar * ' + T.floodSpread.toFixed(3) + ' + h * ' + pc(0.07).toFixed(3) + ';',
       '  float p = clamp((uT - st) / ' + T.floodTile.toFixed(3) + ', 0.0, 1.0); p = 1.0 - pow(1.0 - p, 3.0);',
       '  float a = (h - 0.5) * 0.9 * (1.0 - p); vec2 l = (px - ctr) / (0.5 * uCell);',
       '  l = mat2(cos(a), -sin(a), sin(a), cos(a)) * l;',
@@ -578,6 +593,7 @@ export async function create(container, opts = {}) {
 
   function layout() {
     const w = innerWidth, h = innerHeight, aspect = w / h, portrait = aspect < 0.9;
+    renderer.setPixelRatio(pixelRatio());
     renderer.setSize(w, h, false);
     composer.setPixelRatio(renderer.getPixelRatio());
     composer.setSize(w, h);
@@ -620,7 +636,7 @@ export async function create(container, opts = {}) {
       t.target.set(x, y, -D).applyMatrix4(finalCam.matrixWorld);
       t.tq.copy(finalCam.quaternion).multiply(faceUp).multiply(tmpQ.setFromAxisAngle(new THREE.Vector3(0, 1, 0), t.jitter));
       t.screenX = (x - left) / lockW;
-      t.lockAt = T.lock + Math.hypot(x - mcx, y - mcy) / markW * 0.05;   // inner tiles land a hair first: a ratchet, not a smear
+      t.lockAt = T.lock + Math.hypot(x - mcx, y - mcy) / markW * pc(0.05);   // inner tiles land a hair first: a ratchet, not a smear
     }
     const txc = portrait ? 0 : left + markW + gap + textW / 2, tyc = portrait ? top - markW - gap - textH / 2 : 0;
     for (const l of letters) {
@@ -642,18 +658,19 @@ export async function create(container, opts = {}) {
     // the live header chips the mark settles into
     chip = null;
     if (chipsEl) {
-      const r = chipsEl.getBoundingClientRect();
+      const r = opts.chipRect ? opts.chipRect() : chipsEl.getBoundingClientRect();
       if (r.width > 2 && r.bottom > 0 && r.top < h) chip = { x: (r.left + r.width / 2) / w * 2 - 1, y: -((r.top + r.height / 2) / h * 2 - 1), px: r.width };
     }
   }
   layout();
   const onResize = () => layout();
   window.addEventListener('resize', onResize);
+  undo.push(() => window.removeEventListener('resize', onResize));
 
   /* ---------- tile flight: a pure function of t ---------- */
   function flightPos(tl, t, out) {
     // lifted above its roof, gathering light
-    const lu = easeOut(seg(t, tl.liftAt, tl.liftAt + 0.42));
+    const lu = easeOut(seg(t, tl.liftAt, tl.liftAt + pc(0.42)));
     out.copy(tl.home); out.y += lu * 0.55;
     if (t <= T.converge) return out;
     // then it accelerates into its place in the mark, arriving at speed (the stop is the snap)
@@ -678,24 +695,24 @@ export async function create(container, opts = {}) {
     camera.getWorldDirection(fwd);
     const dl = t - T.lock;
     if (dl > 0) {
-      const kick = 0.035 * lock.D * Math.exp(-dl * 7) * Math.sin(dl * 24);
+      const kick = 0.035 * lock.D * Math.exp(-dl / PC * 7) * Math.sin(dl / PC * 24);
       const pull = 0.09 * lock.D * easeOut(seg(t, T.lock, CONFIG.END));
       camera.position.addScaledVector(fwd, kick - pull);
     }
     camera.updateMatrixWorld(true);
 
     // exposure: fade up, plus the flash of the lock
-    const dL = t - T.lock - 0.04;
-    const flash = dL > 0 ? Math.exp(-dL * 8) : 0;
+    const dL = t - T.lock - pc(0.04);
+    const flash = dL > 0 ? Math.exp(-dL / PC * 8) : 0;
     renderer.toneMappingExposure = easeOut(seg(t, 0, T.exposureIn)) * (1 + CONFIG.post.lockFlash * flash);
     bloom.strength = Q.bloom.strength + CONFIG.post.lockBloom * flash;
     // depth of field: strongest over the miniature city, gone before the lockup
-    const tilt = Q.tiltShift * easeInOut(seg(t, 0.6, 1.8)) * (1 - easeInOut(seg(t, T.lift, T.converge + 0.2)));
+    const tilt = Q.tiltShift * easeInOut(seg(t, pc(0.6), pc(1.8))) * (1 - easeInOut(seg(t, T.lift, T.converge + pc(0.2))));
     tiltH.uniforms.uAmount.value = tiltV.uniforms.uAmount.value = tilt * 2.2 * (bufH / 900);
     tiltH.enabled = tiltV.enabled = Q.tiltShift > 0 && tilt > 0.01;
 
     // the city sinks into the dark as the lights gather
-    const on = easeOut(seg(t, 0.15, 1.3)), dim = easeInOut(seg(t, T.lift, T.lock - 0.1));
+    const on = easeOut(seg(t, pc(0.15), pc(1.3))), dim = easeInOut(seg(t, T.lift, T.lock - pc(0.1)));
     scene.fog.density = 0.034 + dim * 0.03;
     hemi.intensity = 0.5 * (1 - 0.6 * dim); moon.intensity = 1.0 * (1 - 0.5 * dim);
     scene.environmentIntensity = 0.3 * (1 - 0.6 * dim);
@@ -709,7 +726,7 @@ export async function create(container, opts = {}) {
     // flight into the header: the chip centre, at the mark's depth from the current camera
     const fly = easeInOut(seg(t, T.fly, T.fly + T.flyDur));
     // the 3x3 tesserae close up into one solid chip each, like the header's
-    const fuse = 1 - (1 - 3 * S / CHIP) * easeInOut(seg(t, T.fly, T.fly + 0.35)), chipNow = CHIP * fuse;
+    const fuse = 1 - (1 - 3 * S / CHIP) * easeInOut(seg(t, T.fly, T.fly + pc(0.35))), chipNow = CHIP * fuse;
     let flyC = null, flyK = 1;
     if (fly > 0 && chip) {
       const mcW = flyA.set(lock.mcx, lock.mcy, -lock.D).applyMatrix4(finalCam.matrixWorld);
@@ -723,9 +740,9 @@ export async function create(container, opts = {}) {
     const gapNow = G0 + (chipNow * 2 / 7 - G0) * fly;
     let ri = 0;
     for (const tl of tiles) {
-      const lu = seg(t, tl.lightAt, tl.lightAt + 0.4), lit = easeOut(lu);
-      const pop = Math.exp(-Math.pow((t - tl.lightAt - 0.1) / 0.09, 2));
-      const lift = easeOut(seg(t, tl.liftAt, tl.liftAt + 0.42));
+      const lu = seg(t, tl.lightAt, tl.lightAt + pc(0.4)), lit = easeOut(lu);
+      const pop = Math.exp(-Math.pow((t - tl.lightAt - pc(0.1)) / pc(0.09), 2));
+      const lift = easeOut(seg(t, tl.liftAt, tl.liftAt + pc(0.42)));
       const dLock = t - tl.lockAt;
       if (t < tl.liftAt) {
         tl.mesh.position.copy(tl.home); tl.mesh.position.y += (1 - lit) * 0.35;
@@ -740,7 +757,7 @@ export async function create(container, opts = {}) {
         tl.mat.emissiveIntensity = 1.8 + 1.0 * lift;
       } else {
         // locked: a thunk into the plane, a flash, then the tile cools to its own colour
-        const sq = Math.exp(-dLock * 11) * Math.cos(dLock * 34);
+        const sq = Math.exp(-dLock / PC * 11) * Math.cos(dLock / PC * 34);
         if (flyC) {
           const lx = tl.local.x * fuse + (tl.cx ? 1 : -1) * (chipNow / 2 + gapNow / 2), ly = tl.local.y * fuse + (tl.cy ? -1 : 1) * (chipNow / 2 + gapNow / 2);
           tl.mesh.position.set(lx * flyK, ly * flyK, 0).applyQuaternion(finalCam.quaternion).add(flyC);
@@ -750,24 +767,24 @@ export async function create(container, opts = {}) {
           tl.mesh.scale.setScalar(1 + 0.06 * sq);
         }
         tl.mesh.quaternion.copy(tl.tq);
-        const cool = easeOut(seg(dLock, 0, 0.55));
+        const cool = easeOut(seg(dLock, 0, pc(0.55)));
         const sw = Math.exp(-Math.pow((tl.screenX - sweep) / 0.12, 2));
         // as it flies home the tile brightens to read as the flat header chip it becomes
         tl.mat.emissiveIntensity = (3.2 * (1 - cool) + 0.42 * cool + 1.1 * sw) * (1 - fly) + CONFIG.post.chipEmissive * fly;
       }
-      const away = 1 - easeOut(seg(t, tl.liftAt, tl.liftAt + 0.35));
+      const away = 1 - easeOut(seg(t, tl.liftAt, tl.liftAt + pc(0.35)));
       tl.halo.position.copy(tl.mesh.position);
       tl.halo.scale.setScalar(1.1 + 0.8 * pop + 0.5 * lift * (1 - away));
       tl.halo.material.opacity = (0.45 * lit + 0.8 * pop) * away + 0.35 * lift * (1 - seg(t, T.converge, tl.lockAt));
       tl.glow.material.opacity = 0.55 * lit * away;
 
       // ribbon: where this tile was over the last ~quarter second
-      const showR = t > T.converge && dLock < 0.35;
-      const fadeR = 1 - easeOut(seg(dLock, 0, 0.3));
+      const showR = t > T.converge && dLock < pc(0.35);
+      const fadeR = 1 - easeOut(seg(dLock, 0, pc(0.3)));
       for (let j = 0; j < TS; j++) {
-        const tj = Math.max(T.converge, Math.min(t, tl.lockAt) - j * 0.02);
+        const tj = Math.max(T.converge, Math.min(t, tl.lockAt) - j * pc(0.02));
         flightPos(tl, tj, rA);
-        flightPos(tl, Math.max(T.converge, tj - 0.01), rB);
+        flightPos(tl, Math.max(T.converge, tj - pc(0.01)), rB);
         side.copy(rA).sub(rB).cross(tmpV.copy(rA).sub(camera.position)).normalize();
         if (!showR) side.set(0, 0, 0);
         const wdt = 0.05 * (1 - j / (TS - 1)), o = (ri * TS + j) * 6;
@@ -778,13 +795,13 @@ export async function create(container, opts = {}) {
       }
       ri++;
     }
-    ribbons.visible = t > T.converge && t < T.lock + 0.5;
+    ribbons.visible = t > T.converge && t < T.lock + pc(0.5);
     if (ribbons.visible) { ribGeo.attributes.position.needsUpdate = true; ribGeo.attributes.color.needsUpdate = true; }
 
     // links + particles: draw on, run hot, then fade as the lights leave
-    hotU.value = easeOut(seg(t, T.lift - 0.1, T.lift + 0.3));
-    fadeU.value = 1 - easeOut(seg(t, T.converge - 0.05, T.converge + 0.25));
-    const linksOn = t < T.converge + 0.3;
+    hotU.value = easeOut(seg(t, T.lift - pc(0.1), T.lift + pc(0.3)));
+    fadeU.value = 1 - easeOut(seg(t, T.converge - pc(0.05), T.converge + pc(0.25)));
+    const linksOn = t < T.converge + pc(0.3);
     for (const e of edges) {
       e.mat.uniforms.uProg.value = easeOut(seg(t, e.at, e.at + e.dur));
       e.mesh.visible = linksOn && t > e.at;
@@ -793,18 +810,18 @@ export async function create(container, opts = {}) {
     particles.visible = linksOn && t > T.linksFrom;
 
     // the lock: ring, streak, ripple
-    const ru = seg(dL, 0, 0.75);
-    ring.visible = streak.visible = dL > 0 && dL < 0.9;
+    const ru = seg(dL, 0, pc(0.75));
+    ring.visible = streak.visible = dL > 0 && dL < pc(0.9);
     ring.scale.setScalar(lock.markW * (0.62 + 3.2 * expoOut(ru)));
     ringMat.opacity = (1 - easeOut(ru)) * 0.9;
-    const su = seg(dL, 0, 0.7);
+    const su = seg(dL, 0, pc(0.7));
     streak.scale.set(lock.markW * (0.4 + 7 * expoOut(su)), lock.markW * 0.07 * (1 - 0.6 * su), 1);
     streakMat.opacity = Math.sin(Math.PI * Math.min(1, su * 1.6)) * (1 - su);
-    const rp = seg(dL, 0, 0.9);
+    const rp = seg(dL, 0, pc(0.9));
     finish.uniforms.uRipple.value.set(expoOut(rp) * Math.hypot(bufW, bufH) * 0.75, dL > 0 ? CONFIG.post.ripple * (1 - rp) * (1 - rp) : 0);
 
     // the name rises in, letter by letter; it turns to the page's ink as the ground is laid
-    letterColor.copy(CREAM).lerp(INKC, easeInOut(seg(t, T.flood + 0.05, T.flood + 0.4)));
+    letterColor.copy(CREAM).lerp(INKC, easeInOut(seg(t, T.flood + pc(0.05), T.flood + pc(0.4))));
     const nameOut = 1 - easeOut(seg(t, T.nameOut, T.nameOut + T.nameOutDur));   // gone before the ground is laid
     for (const l of letters) {
       const st = T.textIn + l.order * T.letterStep, e = expoOut(seg(t, st, st + T.letterDur));
@@ -821,7 +838,11 @@ export async function create(container, opts = {}) {
     finish.uniforms.uT.value = t;
     canvas.style.opacity = String(1 - seg(t, T.fade, CONFIG.END - 0.03));
     // the night-themed Skip button leaves before the page's ground arrives
-    if (skipEl) { const so = 1 - seg(t, T.flood - 0.25, T.flood); skipEl.style.opacity = String(so); skipEl.style.pointerEvents = so <= 0 ? 'none' : ''; }
+    // (hidden once gone, so keyboard focus can never land on an invisible control)
+    if (skipEl) {
+      const so = 1 - seg(t, T.flood - pc(0.25), T.flood);
+      skipEl.style.opacity = String(so); skipEl.style.pointerEvents = so <= 0 ? 'none' : ''; skipEl.style.visibility = so <= 0 ? 'hidden' : '';
+    }
   }
 
   function render(t) {
