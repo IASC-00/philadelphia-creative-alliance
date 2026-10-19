@@ -119,7 +119,7 @@
       var h = cols[i], n = slot[h]++, cx = h % 2, cy = h > 1 ? 1 : 0;
       var tx = mx + cx * (chip + G) + (n % 3) * (s + g) + s / 2, ty = my + cy * (chip + G) + Math.floor(n / 3) * (s + g) + s / 2;
       html += '<i class="pi-dot" style="--c:' + HUE[h] + ';background:' + HUE[h] + ';left:' + p.x.toFixed(1) + 'px;top:' + p.y.toFixed(1) + 'px;' +
-        '--d1:' + (0.22 + i * 0.04).toFixed(2) + 's;--d2:' + (3.05 + Math.hypot(tx - cxm, ty - cym) / markW * 0.05).toFixed(3) + 's;' +
+        '--d1:' + (0.85 + i * 0.035).toFixed(2) + 's;--d2:' + (3.05 + Math.hypot(tx - cxm, ty - cym) / markW * 0.05).toFixed(3) + 's;' +
         '--tx:' + (tx - p.x).toFixed(1) + 'px;--ty:' + (ty - p.y).toFixed(1) + 'px;--ts:' + (s / 12).toFixed(3) + '"></i>';
       p.h = h;
     });
@@ -133,7 +133,7 @@
       }
       inTree[bestB] = true;
       lines += '<line x1="' + pts[bestA].x.toFixed(1) + '" y1="' + pts[bestA].y.toFixed(1) + '" x2="' + pts[bestB].x.toFixed(1) + '" y2="' + pts[bestB].y.toFixed(1) +
-        '" stroke="' + HUE[pts[bestB].h] + '" style="--len:' + Math.ceil(bd) + ';--d1:' + (0.85 + e * 0.045).toFixed(2) + 's"/>';
+        '" stroke="' + HUE[pts[bestB].h] + '" style="--len:' + Math.ceil(bd) + ';--d1:' + (1.20 + e * 0.035).toFixed(2) + 's"/>';
     }
     svg.innerHTML = lines;
     // the hand-off: the page's own ground laid tile by tile, outward from the mark
@@ -141,11 +141,12 @@
     for (var yy = 0; yy < H; yy += cell) for (var xx = 0; xx < W; xx += cell) {
       var dd = Math.hypot(xx + cell / 2 - cxm, yy + cell / 2 - cym) / far;
       cells += '<i class="pi-cell" style="left:' + xx + 'px;top:' + yy + 'px;width:' + (cell + 1) + 'px;height:' + (cell + 1) + 'px;' +
-        '--d:' + (5.0 + dd * 0.42 + R() * 0.07).toFixed(2) + 's;--r:' + ((R() - 0.5) * 50).toFixed(0) + 'deg"></i>';
+        '--d:' + (5.0 + dd * 0.38 + R() * 0.07).toFixed(2) + 's;--r:' + ((R() - 0.5) * 50).toFixed(0) + 'deg"></i>';
     }
     ov.querySelector('.pi-cells').innerHTML = cells;
     if (TEST) { seek2d(t); exposeHook(); return; }
-    startClock(0);
+    if (t > 0) anims().forEach(function (an) { an.currentTime = t * 1000; });
+    startClock(t);
   }
 
   function anims() { return ov.getAnimations ? ov.getAnimations({ subtree: true }) : []; }
@@ -163,10 +164,10 @@
     if (!document.hidden) { t += dt; visible += dt; }
     if (mode === '3d' && scene3d) {
       if (!guardDone) {
-        frames.push(now);
-        if (t > 0.5) {
+        if (t >= 0.8) frames.push(now);
+        if (t >= 1.4) {
           guardDone = true;
-          var avg = (frames[frames.length - 1] - frames[0]) / Math.max(1, frames.length - 1);
+          var avg = frames.length > 1 ? (frames[frames.length - 1] - frames[0]) / (frames.length - 1) : 0;
           if (avg > 50) { run2d(); return; }
         }
       }
@@ -183,9 +184,13 @@
     cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey, true);
     if (scene3d) { try { scene3d.dispose(); } catch (e) {} scene3d = null; }
+    // if a keyboard user was on Skip, put them at the top of the page rather than on <body>
+    var hadFocus = ov && ov.contains(document.activeElement);
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
     inerted.forEach(function (el) { el.inert = false; });
     root.classList.remove('pca-intro', 'pca-intro-cover');
+    var target = hadFocus && document.querySelector('.topbar .brand');
+    if (target) { try { target.focus({ preventScroll: true }); } catch (e) {} }
   }
 
   /* ---------- 3D attempt ---------- */

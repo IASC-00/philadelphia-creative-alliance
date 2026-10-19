@@ -35,17 +35,18 @@ import { OutputPass } from './vendor/three/OutputPass.js';
 export const CONFIG = {
   END: 6.0,                       // seconds; js/intro.js uses the same value
   time: {
-    exposureIn: 0.7,              // fade up from black
-    lightsFrom: 0.22, lightStep: 0.04,          // creative spaces light up, nearest first
-    linksFrom: 0.85, linkDepthStep: 0.17, linkDur: 0.45, extraLinksFrom: 1.7,
+    exposureIn: 0.35,             // snappy fade up from ambient floor
+    lightsFrom: 0.85, lightStep: 0.035,         // creative spaces light up as camera crests rooftops
+    linksFrom: 1.20, linkDepthStep: 0.14, linkDur: 0.42, extraLinksFrom: 1.90,
     lift: 2.62,                   // lights lift off their roofs; links run white-hot
     converge: 3.05,               // ...and accelerate towards the mark
     lock: 3.65,                   // THE BEAT: all 36 lock into the mark
-    textIn: 3.78, letterStep: 0.022, letterDur: 0.75,
-    sweep: 4.3, sweepDur: 0.7,    // light sweep across the lockup
-    flood: 5.0, floodSpread: 0.42, floodTile: 0.26,   // page ground laid tile by tile
-    fly: 5.12,                    // mark flies into the header chips (lands at fade)
-    fade: 5.74,                   // canvas fades onto the page
+    textIn: 3.72, letterStep: 0.02, letterDur: 0.65,
+    sweep: 4.18, sweepDur: 0.55,  // light sweep across the lockup
+    nameOut: 4.65, nameOutDur: 0.30, // wordmark dissolves before ground flood
+    flood: 5.0, floodSpread: 0.38, floodTile: 0.24,   // page ground laid tile by tile
+    fly: 4.85, flyDur: 0.52,      // mark flies into the header chips, docks, holds, then the fade
+    fade: 5.65,                   // canvas fades onto the page
   },
   color: {
     ink: 0x0c0a10,                // night sky overhead + clear colour
@@ -61,10 +62,10 @@ export const CONFIG = {
     // the hand-off colours are read from the page (--ground, --ink) so both themes land exactly
   },
   post: {
-    high: { maxPixelRatio: 2, samples: 4, bloom: { strength: 0.8, radius: 0.55, threshold: 0.92 }, tiltShift: 1.0, trails: 180, particlesPerLink: 28 },
-    low: { maxPixelRatio: 1.5, samples: 2, bloom: { strength: 0.62, radius: 0.45, threshold: 0.95 }, tiltShift: 0, trails: 110, particlesPerLink: 14 },
-    lockBloom: 0.55,              // extra bloom strength at the lock, decaying
-    lockFlash: 0.22,              // extra exposure at the lock, decaying
+    high: { maxPixelRatio: 2, samples: 4, bloom: { strength: 0.6, radius: 0.5, threshold: 0.92 }, tiltShift: 1.0, trails: 180, particlesPerLink: 28 },
+    low: { maxPixelRatio: 1.5, samples: 2, bloom: { strength: 0.48, radius: 0.42, threshold: 0.95 }, tiltShift: 0, trails: 110, particlesPerLink: 14 },
+    lockBloom: 0.4,               // extra bloom strength at the lock, decaying
+    lockFlash: 0.16,              // extra exposure at the lock, decaying
     vignette: 0.42, grain: 0.022, ripple: 0.012,
     chipEmissive: 0.7,            // tile glow on landing, tuned so the tiles match the live header chips
   },
@@ -78,7 +79,6 @@ const seg = (t, a, b) => clamp((t - a) / (b - a));
 const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
 const expoOut = (x) => { x = clamp(x); return x >= 1 ? 1 : 1 - Math.pow(2, -10 * x); };
 const easeInOut = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
-const quartInOut = (x) => { x = clamp(x); return x < 0.5 ? 8 * x * x * x * x : 1 - Math.pow(-2 * x + 2, 4) / 2; };
 const backOut = (x, k = 1.6) => { x = clamp(x); const c = k + 1; return 1 + c * Math.pow(x - 1, 3) + k * Math.pow(x - 1, 2); };
 
 function rng(seed) {
@@ -132,7 +132,8 @@ export async function create(container, opts = {}) {
   canvas.setAttribute('aria-hidden', 'true');
   const onLost = (e) => { e.preventDefault(); if (opts.onLost) opts.onLost(); };
   canvas.addEventListener('webglcontextlost', onLost);
-  container.insertBefore(canvas, container.querySelector('.pi-skip'));
+  const skipEl = container.querySelector('.pi-skip');
+  container.insertBefore(canvas, skipEl);
 
   // the page we hand off to: its ground and ink, whichever theme it is in
   const GROUND = cssColor('--ground', '#E9E7E0'), INKC = cssColor('--ink', '#17131F');
@@ -572,8 +573,8 @@ export async function create(container, opts = {}) {
   let path, look, lock = {}, chip = null, bufW = 1, bufH = 1;
   const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpQ = new THREE.Quaternion();
   const faceUp = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
-  // mark geometry: 3x3 tesserae per chip; G1 is the header's own chip:gap ratio (7px chips, 2px gap)
-  const S = 0.36, GAP = 0.07, CHIP = 3 * S + 2 * GAP, G0 = 0.16, G1 = CHIP * 2 / 7;
+  // mark geometry: 3x3 tesserae per chip; on the flight home the gap goes to the header's own chip:gap ratio (7px chips, 2px gap)
+  const S = 0.36, GAP = 0.07, CHIP = 3 * S + 2 * GAP, G0 = 0.16;
 
   function layout() {
     const w = innerWidth, h = innerHeight, aspect = w / h, portrait = aspect < 0.9;
@@ -706,18 +707,20 @@ export async function create(container, opts = {}) {
 
     const sweep = -0.3 + 1.6 * seg(t, T.sweep, T.sweep + T.sweepDur);
     // flight into the header: the chip centre, at the mark's depth from the current camera
-    const fly = quartInOut(seg(t, T.fly, T.fade));
+    const fly = easeInOut(seg(t, T.fly, T.fly + T.flyDur));
+    // the 3x3 tesserae close up into one solid chip each, like the header's
+    const fuse = 1 - (1 - 3 * S / CHIP) * easeInOut(seg(t, T.fly, T.fly + 0.35)), chipNow = CHIP * fuse;
     let flyC = null, flyK = 1;
     if (fly > 0 && chip) {
       const mcW = flyA.set(lock.mcx, lock.mcy, -lock.D).applyMatrix4(finalCam.matrixWorld);
       const dcur = tmpV.copy(mcW).sub(camera.position).dot(fwd);
       const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
       const target = flyB.set(chip.x * dcur * tv * camera.aspect, chip.y * dcur * tv, -dcur).applyMatrix4(camera.matrixWorld);
-      const markPx = (2 * CHIP + G1) / (2 * dcur * tv) * innerHeight;
+      const markPx = (2 * 3 * S + 3 * S * 2 / 7) / (2 * dcur * tv) * innerHeight;   // the fused mark, header gap ratio
       flyK = 1 + (chip.px / markPx - 1) * fly;
       flyC = mcW.lerp(target, fly);
     }
-    const gapNow = G0 + (G1 - G0) * fly;
+    const gapNow = G0 + (chipNow * 2 / 7 - G0) * fly;
     let ri = 0;
     for (const tl of tiles) {
       const lu = seg(t, tl.lightAt, tl.lightAt + 0.4), lit = easeOut(lu);
@@ -739,7 +742,7 @@ export async function create(container, opts = {}) {
         // locked: a thunk into the plane, a flash, then the tile cools to its own colour
         const sq = Math.exp(-dLock * 11) * Math.cos(dLock * 34);
         if (flyC) {
-          const lx = tl.local.x + (tl.cx ? 1 : -1) * (CHIP / 2 + gapNow / 2), ly = tl.local.y + (tl.cy ? -1 : 1) * (CHIP / 2 + gapNow / 2);
+          const lx = tl.local.x * fuse + (tl.cx ? 1 : -1) * (chipNow / 2 + gapNow / 2), ly = tl.local.y * fuse + (tl.cy ? -1 : 1) * (chipNow / 2 + gapNow / 2);
           tl.mesh.position.set(lx * flyK, ly * flyK, 0).applyQuaternion(finalCam.quaternion).add(flyC);
           tl.mesh.scale.setScalar(flyK);
         } else {
@@ -802,7 +805,7 @@ export async function create(container, opts = {}) {
 
     // the name rises in, letter by letter; it turns to the page's ink as the ground is laid
     letterColor.copy(CREAM).lerp(INKC, easeInOut(seg(t, T.flood + 0.05, T.flood + 0.4)));
-    const nameOut = 1 - easeOut(seg(t, T.fly + 0.18, T.fly + 0.45));
+    const nameOut = 1 - easeOut(seg(t, T.nameOut, T.nameOut + T.nameOutDur));   // gone before the ground is laid
     for (const l of letters) {
       const st = T.textIn + l.order * T.letterStep, e = expoOut(seg(t, st, st + T.letterDur));
       l.mat.uniforms.uOpacity.value = Math.min(1, e * 1.4) * nameOut;
@@ -817,6 +820,8 @@ export async function create(container, opts = {}) {
 
     finish.uniforms.uT.value = t;
     canvas.style.opacity = String(1 - seg(t, T.fade, CONFIG.END - 0.03));
+    // the night-themed Skip button leaves before the page's ground arrives
+    if (skipEl) { const so = 1 - seg(t, T.flood - 0.25, T.flood); skipEl.style.opacity = String(so); skipEl.style.pointerEvents = so <= 0 ? 'none' : ''; }
   }
 
   function render(t) {

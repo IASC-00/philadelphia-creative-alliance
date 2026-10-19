@@ -47,14 +47,15 @@ html.pca-intro-cover body::before { content: ""; position: fixed; inset: 0; back
 }
 .pi-words span { display: inline-block; opacity: 0; }
 
-.pi-ov.is-2d .pi-city { animation: pi-city 3s cubic-bezier(.3,.6,.2,1) .1s forwards, pi-out .5s ease-in 2.7s forwards; }
-.pi-ov.is-2d .pi-dot { animation: pi-pop .45s cubic-bezier(.3,1.6,.5,1) var(--d1) forwards, pi-lift .42s ease-out 2.62s forwards, pi-fly calc(var(--d2) - 3.05s + .6s) cubic-bezier(.55,0,.9,.45) 3.05s forwards; }
-.pi-ov.is-2d .pi-lines line { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: pi-draw .5s ease-out var(--d1) forwards, pi-hot .4s ease-out 2.52s forwards, pi-out .3s ease-in 3.0s forwards; }
+.pi-ov.is-2d .pi-city { animation: pi-city 2.8s cubic-bezier(.3,.6,.2,1) 0s forwards, pi-out .5s ease-in 2.7s forwards; }
+.pi-ov.is-2d .pi-dot { animation: pi-pop .42s cubic-bezier(.3,1.6,.5,1) var(--d1) forwards, pi-lift .42s ease-out 2.62s forwards, pi-fly calc(var(--d2) - 3.05s + .6s) cubic-bezier(.55,0,.9,.45) 3.05s forwards; }
+.pi-ov.is-2d .pi-lines line { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: pi-draw .42s ease-out var(--d1) forwards, pi-hot .4s ease-out 2.52s forwards, pi-out .3s ease-in 3.0s forwards; }
 .pi-ov.is-2d .pi-ring { animation: pi-ring .75s cubic-bezier(.16,1,.3,1) 3.69s forwards; }
-.pi-ov.is-2d .pi-words span { animation: pi-letter .75s cubic-bezier(.16,1,.3,1) calc(3.78s + var(--i) * .022s) forwards, pi-ink .35s ease-in-out 5.05s forwards, pi-out .27s ease-in 5.3s forwards; }
-.pi-ov.is-2d .pi-cell { animation: pi-lay .26s cubic-bezier(.2,.7,.3,1) var(--d) forwards; }
-.pi-ov.is-2d .pi-mark { animation: pi-home .62s cubic-bezier(.76,0,.24,1) 5.12s forwards; }
-.pi-ov.is-2d { animation: pi-out .26s ease-in 5.74s forwards; }
+.pi-ov.is-2d .pi-words span { animation: pi-letter .65s cubic-bezier(.16,1,.3,1) calc(3.72s + var(--i) * .02s) forwards, pi-out .3s ease-out 4.65s forwards; }
+.pi-ov.is-2d .pi-cell { animation: pi-lay .24s cubic-bezier(.2,.7,.3,1) var(--d) forwards; }
+.pi-ov.is-2d .pi-mark { animation: pi-home .52s cubic-bezier(.25,.1,.25,1) 4.85s forwards; }
+.pi-ov.is-2d .pi-skip { animation: pi-out .25s ease 4.75s forwards; }
+.pi-ov.is-2d { animation: pi-out .32s ease-in 5.65s forwards; }
 
 @keyframes pi-city { 0% { opacity: 0; transform: scale(1.25); } 30% { opacity: 1; } 100% { opacity: .55; transform: scale(1); } }
 @keyframes pi-pop { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: scale(1); box-shadow: 0 0 18px 4px var(--c); } }
@@ -64,7 +65,6 @@ html.pca-intro-cover body::before { content: ""; position: fixed; inset: 0; back
 @keyframes pi-hot { to { stroke: #FFF3E0; stroke-width: 2.4; stroke-dashoffset: 0; } }
 @keyframes pi-ring { from { opacity: .95; transform: scale(.6); } to { opacity: 0; transform: scale(3.8); } }
 @keyframes pi-letter { from { opacity: 0; transform: translateY(.7em); } to { opacity: 1; transform: none; } }
-@keyframes pi-ink { to { color: var(--ink, #17131F); } }
 @keyframes pi-lay { from { transform: scale(0) rotate(var(--r)); } to { transform: none; } }
 @keyframes pi-home { to { transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(var(--fk, 1)); } }
 @keyframes pi-out { to { opacity: 0; } }
