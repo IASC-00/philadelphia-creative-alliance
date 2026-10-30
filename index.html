@@ -3,25 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Philadelphia Creative Alliance — an umbrella for the region's creative organisations</title>
-<meta name="description" content="An umbrella connecting and supporting creative organisations across Greater Philadelphia — music, visual arts, theatre, film, literary, craft, arts education, community spaces and festivals. Artists join free.">
-<link rel="canonical" href="https://philadelphiacreativealliance.com/">
+<meta name="robots" content="noindex, nofollow">
+<title>Philadelphia Creative Alliance — an umbrella for the region's creative organizations</title>
+<meta name="description" content="An umbrella connecting and supporting creative organizations across Greater Philadelphia — music, visual arts, theatre, film, literary, craft, arts education, community spaces and festivals. Artists join free.">
+<link rel="canonical" href="https://www.philadelphiacreativealliance.com/">
 <meta name="theme-color" content="#E9E7E0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141019" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Philadelphia Creative Alliance">
 <meta property="og:title" content="Philadelphia Creative Alliance">
-<meta property="og:description" content="The umbrella connecting and supporting creative organisations across Greater Philadelphia. Artists join free.">
-<meta property="og:url" content="https://philadelphiacreativealliance.com/">
-<meta property="og:image" content="https://philadelphiacreativealliance.com/og.png">
+<meta property="og:description" content="The umbrella connecting and supporting creative organizations across Greater Philadelphia. Artists join free.">
+<meta property="og:url" content="https://www.philadelphiacreativealliance.com/">
+<meta property="og:image" content="https://www.philadelphiacreativealliance.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A mosaic of irregular coloured tiles set in dark grout, above the words Philadelphia Creative Alliance.">
+<meta property="og:image:alt" content="A mosaic of irregular colored tiles set in dark grout, above the words Philadelphia Creative Alliance.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Philadelphia Creative Alliance">
-<meta name="twitter:description" content="The umbrella connecting and supporting creative organisations across Greater Philadelphia.">
-<meta name="twitter:image" content="https://philadelphiacreativealliance.com/og.png">
-<meta name="twitter:image:alt" content="A mosaic of irregular coloured tiles set in dark grout, above the words Philadelphia Creative Alliance.">
+<meta name="twitter:description" content="The umbrella connecting and supporting creative organizations across Greater Philadelphia.">
+<meta name="twitter:image" content="https://www.philadelphiacreativealliance.com/og.png">
+<meta name="twitter:image:alt" content="A mosaic of irregular colored tiles set in dark grout, above the words Philadelphia Creative Alliance.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='16' height='16' fill='%23EC4A2C'/%3E%3Crect x='16' width='16' height='16' fill='%232F63E6'/%3E%3Crect y='16' width='16' height='16' fill='%23F2B01E'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23DB2F86'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -283,6 +284,7 @@
   .amount-row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1.2rem 0; }
   .amount { font-family:var(--mono); font-size:.8rem; padding:.55rem .9rem; border:1px solid var(--line); border-radius:2px; cursor:pointer; background:transparent; color:var(--ink); }
   .amount:hover, .amount[aria-pressed="true"]{ border-color:var(--accent); color:var(--accent); }
+  .amount:disabled { cursor:not-allowed; border-color:var(--line); color:var(--ink-soft); }
   .note { font-size:.82rem; color:var(--ink-soft); font-family:var(--mono); letter-spacing:.02em; }
   .ways { list-style:none; padding:0; margin:1.2rem 0 0; }
   .ways li { border-top:1px solid var(--line); padding:.7rem 0; font-size:.95rem; color:var(--ink-soft); }
@@ -306,7 +308,20 @@
   .foot .k { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
   .foot h3 { font-size:1.35rem; max-width:30ch; }
   .draft-tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:2px; padding:.3rem .55rem; }
+
+  /* ---------- 44px touch targets on phones and tablets ---------- */
+  @media (max-width: 1024px) {
+    .skip { min-height:44px; display:inline-flex; align-items:center; }
+    .brand { min-height:44px; }
+    .nav a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; }
+    .btn, .tabs button, .amount { min-height:44px; }
+    .amount { min-width:44px; }
+    .chipgrid a { display:inline-flex; align-items:center; min-height:44px; }
+    .badge-demo { min-height:44px; }
+  }
 </style>
+<link rel="stylesheet" href="css/intro.css">
+<script src="js/intro.js"></script>
 </head>
 <body>
 
@@ -326,7 +341,7 @@
     <span>Philadelphia Creative Alliance</span>
   </a>
   <nav class="nav" aria-label="Primary">
-    <a class="hide-sm" href="#organisations">Organisations</a>
+    <a class="hide-sm" href="#organisations">Organizations</a>
     <a class="hide-sm" href="#artists">Artists</a>
     <a class="hide-sm" href="#why">Why</a>
     <a href="#join">Join</a>
@@ -338,16 +353,16 @@
   <section class="hero" aria-labelledby="hero-h">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">Greater Philadelphia · Creative organisations</p>
-        <h1 id="hero-h">One alliance behind the region's creative organisations.</h1>
+        <p class="eyebrow">Greater Philadelphia · Creative organizations</p>
+        <h1 id="hero-h">One alliance behind the region's creative organizations.</h1>
         <p class="lede">Music nonprofits, galleries, theatre companies, film collectives, community arts spaces. Most of them running their own websites, their own promotion, their own tooling — alone. The Alliance is the shared layer underneath.</p>
         <p class="free">Artists join free. Always.</p>
         <div class="doors">
-          <a class="btn solid" href="#join">Join as an organisation</a>
+          <a class="btn solid" href="#join">Join as an organization</a>
           <a class="btn" href="#join-artist">Join as an artist — free</a>
         </div>
       </div>
-      <div class="hero-art" role="img" aria-label="Generated mosaic artwork: irregular coloured tesserae set in dark grout, with gaps where tiles have not yet been laid."></div>
+      <div class="hero-art" role="img" aria-label="Generated mosaic artwork: irregular colored tesserae set in dark grout, with gaps where tiles have not yet been laid."></div>
     </div>
   </section>
 
@@ -357,15 +372,15 @@
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">What it's for</p>
-        <h2 id="what-h">Connect the organisations. Support the work.</h2>
+        <h2 id="what-h">Connect the organizations. Support the work.</h2>
         <p>The Alliance is forming now, so read this as what it's being built to do rather than what it already does. Two halves, and the second is the one nobody else is covering.</p>
       </div>
       <div class="pillars">
         <div class="pillar">
           <h3>Connect</h3>
-          <p>One front door for the region's creative organisations, so the scene is legible from outside it.</p>
+          <p>One front door for the region's creative organizations, so the scene is legible from outside it.</p>
           <ul>
-            <li>A wall clients and funders can browse by kind of organisation</li>
+            <li>A wall clients and funders can browse by kind of organization</li>
             <li>Referrals between members instead of cold outreach</li>
             <li>A shared audience each member can reach</li>
           </ul>
@@ -386,9 +401,9 @@
   <section id="organisations" aria-labelledby="orgs-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">Member organisations</p>
+        <p class="eyebrow">Member organizations</p>
         <h2 id="orgs-h">The wall is going up.</h2>
-        <p>Every tile is an organisation. Nine kinds, every one of them open — and we're setting the first tiles now. If one of these is yours, claim it.</p>
+        <p>Every tile is an organization. Nine kinds, every one of them open — and we're setting the first tiles now. If one of these is yours, claim it.</p>
       </div>
       <div class="mosaic-grid" id="orgwall"></div>
     </div>
@@ -399,7 +414,7 @@
       <div class="sec-head">
         <p class="eyebrow">Artists</p>
         <h2 id="artists-h">Artists join free. Always.</h2>
-        <p>You don't need an organisation behind you. Individual makers of every discipline are welcome on the wall, at no cost, with a link back to your own site and a badge to carry. Free is not an introductory rate — artist membership stays free.</p>
+        <p>You don't need an organization behind you. Individual makers of every discipline are welcome on the wall, at no cost, with a link back to your own site and a badge to carry. Free is not an introductory rate — artist membership stays free.</p>
       </div>
       <div class="chipgrid" id="disciplines"></div>
       <div class="roster" id="roster"></div>
@@ -416,8 +431,8 @@
         <h2 id="why-h">The talent isn't missing. The connections are.</h2>
       </div>
       <div class="split">
-        <p style="font-size:1.1rem;">Greater Philadelphia has no shortage of creative organisations. What it lacks is anything joining them up. Each one carries its own website, its own mailing list, its own promotion — usually on one overworked person — and a funder or client trying to understand the scene has no single place to look. Meanwhile the organisation three neighbourhoods over is solving the exact same problem from scratch.</p>
-        <p style="color:var(--ink-soft)">There is already a body that represents the sector, convenes it, and moves grant money through it. That isn't this. <strong style="color:var(--ink)">We don't lobby. We build.</strong> The Alliance is the working layer: a shared front door, referrals between members, and infrastructure that member organisations can actually pick up and use. No cut of anyone's work, no gatekeeping, and free for artists permanently.</p>
+        <p style="font-size:1.1rem;">Greater Philadelphia has no shortage of creative organizations. What it lacks is anything joining them up. Each one carries its own website, its own mailing list, its own promotion — usually on one overworked person — and a funder or client trying to understand the scene has no single place to look. Meanwhile the organization three neighborhoods over is solving the exact same problem from scratch.</p>
+        <p style="color:var(--ink-soft)">There is already a body that represents the sector, convenes it, and moves grant money through it. That isn't this. <strong style="color:var(--ink)">We don't lobby. We build.</strong> The Alliance is the working layer: a shared front door, referrals between members, and infrastructure that member organizations can actually pick up and use. No cut of anyone's work, no gatekeeping, and free for artists permanently.</p>
       </div>
     </div>
   </section>
@@ -427,7 +442,7 @@
       <div class="sec-head">
         <p class="eyebrow">Who runs it</p>
         <h2 id="behind-h">Kept up by working studios.</h2>
-        <p>The Alliance is being put together by a small group of regional studios. They're operators, not members — the idea is that they keep the wall up so member organisations don't have to.</p>
+        <p>The Alliance is being put together by a small group of regional studios. They're operators, not members — the idea is that they keep the wall up so member organizations don't have to.</p>
       </div>
       <div class="founders">
         <a class="studio" href="https://upwield.com" target="_blank" rel="noopener">
@@ -456,21 +471,21 @@
     <div class="wrap split">
       <div>
         <p class="eyebrow">Claim a tile</p>
-        <h2 id="join-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Put your organisation on the wall.</h2>
+        <h2 id="join-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Put your organization on the wall.</h2>
         <p style="color:var(--ink-soft); margin-top:1rem;">Tell us who you are and what you do. We read every application, then come back to you about what the Alliance can carry for you and what you'd want from it.</p>
         <p style="color:var(--ink-soft);">Individual artists use the second tab — that route is free and always will be.</p>
       </div>
       <div>
         <div class="tabs" role="tablist" aria-label="Membership type">
-          <button type="button" role="tab" id="tab-org" aria-controls="panel-org" aria-selected="true">Organisation</button>
+          <button type="button" role="tab" id="tab-org" aria-controls="panel-org" aria-selected="true">Organization</button>
           <button type="button" role="tab" id="tab-artist" aria-controls="panel-artist" aria-selected="false" tabindex="-1">Artist — free</button>
         </div>
 
         <div id="panel-org" role="tabpanel" aria-labelledby="tab-org">
           <form id="orgform" novalidate>
             <input type="hidden" name="type" value="organisation">
-            <div><label for="on">Organisation name</label><input id="on" name="organisation" autocomplete="organization" required></div>
-            <div><label for="ok">Kind of organisation</label>
+            <div><label for="on">Organization name</label><input id="on" name="organisation" autocomplete="organization" required></div>
+            <div><label for="ok">Kind of organization</label>
               <select id="ok" name="kind"></select>
             </div>
             <div><label for="oc">Contact name &amp; role</label><input id="oc" name="contact" autocomplete="name" required></div>
@@ -518,7 +533,7 @@
         <ul class="ways">
           <li><b>Space</b> A room for a meet-up, a wall, a window.</li>
           <li><b>Print</b> Badges, stickers, and signage at cost.</li>
-          <li><b>Referrals</b> Introduce an organisation that should be on the wall.</li>
+          <li><b>Referrals</b> Introduce an organization that should be on the wall.</li>
           <li><b>Money</b> Covers hosting and materials.</li>
         </ul>
         <div class="amount-row" role="group" aria-label="Donation amount">
@@ -528,7 +543,7 @@
           <button type="button" class="amount" aria-pressed="false">Other</button>
         </div>
         <a class="btn solid" href="#" id="donate" style="width:100%; justify-content:center;">Chip in</a>
-        <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first, so the button below does nothing for now. For space, print or a referral, use the join form above and say which one.</p>
+        <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first, so the button above does nothing for now. For space, print or a referral, use the join form above and say which one.</p>
       </div>
     </div>
   </section>
@@ -545,7 +560,7 @@
         <b>Member · Philadelphia Creative Alliance</b>
       </a>
       <p class="note" style="margin-top:1.6rem;">Paste this anywhere. It's self-contained — no stylesheet, no script, and it renders as the badge above.</p>
-<pre aria-label="Badge embed code">&lt;a href="https://philadelphiacreativealliance.com"
+<pre aria-label="Badge embed code">&lt;a href="https://www.philadelphiacreativealliance.com"
    style="display:inline-flex;align-items:center;gap:.6rem;padding:.6rem .85rem;
           border:1px solid rgba(23,19,31,.16);border-radius:3px;text-decoration:none;
           color:inherit;font:11px/1 ui-monospace,Menlo,Consolas,monospace;
@@ -558,7 +573,7 @@
   &lt;/span&gt;
   &lt;b&gt;Member · Philadelphia Creative Alliance&lt;/b&gt;
 &lt;/a&gt;</pre>
-      <p class="note" style="margin-top:1rem;">Prefer plain text? <code>&lt;a href="https://philadelphiacreativealliance.com"&gt;Member · Philadelphia Creative Alliance&lt;/a&gt;</code> works too.</p>
+      <p class="note" style="margin-top:1rem;">Prefer plain text? <code>&lt;a href="https://www.philadelphiacreativealliance.com"&gt;Member · Philadelphia Creative Alliance&lt;/a&gt;</code> works too.</p>
     </div>
   </section>
 </main>
@@ -567,7 +582,7 @@
   <div class="wrap foot">
     <div>
       <p class="k">Greater Philadelphia</p>
-      <h3>An umbrella for creative organisations. Free for artists.</h3>
+      <h3>An umbrella for creative organizations. Free for artists.</h3>
       <p class="k" style="margin-top:.8rem;">© 2026 · A working draft, not yet an incorporated body</p>
     </div>
     <span class="draft-tag">Working draft · v2</span>
@@ -597,7 +612,7 @@
       { slug:'literary-publishing', label:'Literary & publishing',    blurb:'Presses, zines, reading series, poetry orgs.' },
       { slug:'craft-design',        label:'Craft, design & studios',  blurb:'Makerspaces, ceramics, textile, wood, glass.' },
       { slug:'arts-education',      label:'Arts education & youth',   blurb:'After-school, teaching artists, workshops.' },
-      { slug:'community-spaces',    label:'Community & cultural',     blurb:'Neighbourhood arts spaces, cultural centres.' },
+      { slug:'community-spaces',    label:'Community & cultural',     blurb:'Neighborhood arts spaces, cultural centers.' },
       { slug:'festivals-events',    label:'Festivals & events',       blurb:'Street fairs, open studios, seasonal events.' }
     ],
 
@@ -717,6 +732,9 @@
       PCA.disciplines.forEach(function (d) {
         var a = el('a', null);
         a.href = '#join-artist';   // opens the free artist form, not the org one
+        a.addEventListener('click', function () {
+          var sel = byId('ad'); if (sel) sel.value = d.label;   // carry the chip's discipline into the form
+        });
         var dot = el('span', 'dot');
         dot.style.background = 'var(--t' + (d.t || 1) + ')';
         dot.setAttribute('aria-hidden', 'true');
@@ -743,6 +761,9 @@
   function fillSelects() {
     var kind = byId('ok');
     if (kind) {
+      // No silent default: without this every organization is filed as "Music & sound".
+      var ph = new Option('Choose one', ''); ph.disabled = true; ph.selected = true;
+      kind.appendChild(ph); kind.required = true;
       PCA.orgTypes.forEach(function (t) {
         kind.appendChild(new Option(t.label, t.label));
       });
@@ -798,6 +819,12 @@
     if (window.location.hash === '#join-artist') openArtistTab();
     window.addEventListener('hashchange', function () {
       if (window.location.hash === '#join-artist') openArtistTab();
+      else if (window.location.hash === '#join') select(0, false);
+    });
+    // Every organization door (hero, header Join, wall tiles) points at #join.
+    // Without this, a visitor who opened the artist tab first gets the artist form.
+    document.querySelectorAll('a[href="#join"]').forEach(function (a) {
+      a.addEventListener('click', function () { select(0, false); });
     });
   }
 
@@ -869,6 +896,8 @@
   // --- donation --------------------------------------------------------------
   function initDonate() {
     document.querySelectorAll('.amount').forEach(function (b) {
+      // With no donation link the amounts can't matter; don't let them look live.
+      if (!PCA.donateUrl) { b.disabled = true; return; }
       b.addEventListener('click', function () {
         document.querySelectorAll('.amount').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
         b.setAttribute('aria-pressed', 'true');
@@ -890,5 +919,6 @@
   initDonate();
   if (PCA.live) { var dt = document.querySelector('.draft-tag'); if (dt) dt.remove(); }
 </script>
+<script data-goatcounter="https://stats.iswain.dev/s/pca/count" async src="https://stats.iswain.dev/count.js"></script>
 </body>
 </html>

@@ -1,0 +1,259 @@
+/* Homepage intro controller. Loaded (blocking, small) in <head> so the cover is up before
+   first paint. Plays once per tab on the home page; never on a #link, never with reduced
+   motion. Tries the 3D scene (js/intro3d.js, loaded only now); anything wrong with it
+   (no WebGL, load error, lost context, a device too slow to keep up) runs the 2D version.
+   Test hooks: ?introtest=1 exposes window.__introSeek(seconds) and never auto-advances;
+   ?introtest=rt plays in real time as a first visit would (ignores once-per-tab, #links and
+   reduced motion, for recording); ?introtest=2d is the same with the 2D version forced.
+   Also ?intro2d=1 (force 2D) and ?introguard=0 (no slow-device check). */
+(function () {
+  'use strict';
+  var KEY = 'pcaIntroSeen', END = 4.5, FAILSAFE = 6.75, LOAD_WAIT = 1.95;   // 18 Oct: 0.75x the 6 s cut
+  var q = location.search;
+  var TEST = /[?&]introtest=1\b/.test(q), RT = /[?&]introtest=(rt|2d)\b/.test(q);
+  var FORCE2D = /[?&](intro2d=1|introtest=2d)\b/.test(q), GUARD = !/[?&]introguard=0\b/.test(q);
+  var path = location.pathname;
+  if (!(path === '/' || /\/index\.html$/.test(path))) return;
+  if (!TEST && !RT) {
+    if (location.hash && location.hash !== '#') return;
+    try { if (sessionStorage.getItem(KEY)) return; } catch (e) {}
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+  }
+  var root = document.documentElement;
+  root.classList.add('pca-intro', 'pca-intro-cover');
+  // Wall-clock failsafe (exit-gate 11 Oct): independent of the animation loop, so a render
+  // error or a very slow device can never leave the cover or the scroll lock up past FAILSAFE
+  // seconds of visible time. Off in ?introtest seek mode, which never auto-advances.
+  var wallVisible = 0, wallLast = performance.now(), wallTimer = setInterval(function () {
+    var n = performance.now(); if (!document.hidden) wallVisible += (n - wallLast) / 1000; wallLast = n;
+    if (!TEST && wallVisible >= FAILSAFE) finish();
+  }, 250);
+  var here = (document.currentScript && document.currentScript.src) || location.href;
+  var url3d = new URL('intro3d.js', here).href;
+
+  var ov, skip, mode = null, scene3d = null, done = false, raf = 0;
+  var t = 0, last = 0, startedAt = 0, visible = 0, inerted = [];
+
+  function rng(seed) {
+    return function () {
+      seed = seed + 0x6D2B79F5 | 0; var r = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      r = r + Math.imul(r ^ r >>> 7, 61 | r) ^ r; return ((r ^ r >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function build() {
+    ov = document.createElement('div');
+    ov.className = 'pi-ov';
+    ov.innerHTML = '<div class="pi-2d" aria-hidden="true"><div class="pi-city"></div><svg class="pi-lines"></svg>' +
+      '<div class="pi-cells"></div><div class="pi-ring"></div><div class="pi-mark"></div><p class="pi-words"></p></div>' +
+      '<button class="pi-skip" type="button">Skip intro</button>';
+    document.body.insertBefore(ov, document.body.firstChild);
+    root.classList.remove('pca-intro-cover');
+    skip = ov.querySelector('.pi-skip');
+    skip.addEventListener('click', finish);
+    document.addEventListener('keydown', onKey, true);
+    // keep focus inside the intro: the page behind is inert until it ends
+    Array.prototype.forEach.call(document.body.children, function (el) {
+      if (el !== ov && !el.inert) { el.inert = true; inerted.push(el); }
+    });
+  }
+
+  // the header chips where the page will have them: measured with the scroll lock off for a moment,
+  // so the scrollbar the page gets back after the intro is already accounted for
+  function chipRect() {
+    var ce = document.querySelector('.topbar .brand .chips'); if (!ce) return null;
+    var locked = root.classList.contains('pca-intro');
+    if (locked) root.classList.remove('pca-intro');
+    var r = ce.getBoundingClientRect();
+    if (locked) root.classList.add('pca-intro');
+    return r;
+  }
+
+  function onKey(e) { if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); finish(); } }
+
+  /* ---------- 2D fallback: the same beats as the 3D version, drawn with CSS + SVG ----------
+     lights across a city grid connect, run hot, converge and lock into the mark (ring), the name
+     rises in letter by letter, the page's ground is laid tile by tile, the mark flies into the
+     header chips and the overlay fades onto the page. Timings match CONFIG.time in intro3d.js. */
+  var built2d = false;
+  function run2d() {
+    if (scene3d) { try { scene3d.dispose(); } catch (e) {} scene3d = null; }
+    if (built2d || done) return; built2d = true;
+    mode = '2d';
+    ov.classList.remove('is-3d'); ov.classList.add('is-2d');
+    var W = innerWidth, H = innerHeight, portrait = W / H < 0.9, R = rng(7);
+    var HUE = ['#EC4A2C', '#2F63E6', '#F2B01E', '#DB2F86'];
+    var markEl = ov.querySelector('.pi-mark'), svg = ov.querySelector('.pi-lines'), words = ov.querySelector('.pi-words');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    // the mark: 2x2 chips of 3x3 tesserae, like the header's four chips
+    var s = Math.round(Math.min(portrait ? W * 0.075 : W * 0.032, H * 0.06, 34)), g = Math.max(2, Math.round(s * 0.18)), G = Math.round(s * 0.45);
+    var chip = 3 * s + 2 * g, markW = 2 * chip + G;
+    var fs = Math.round(s * 1.02), lineH = fs * 1.28, textW = fs * 0.62 * 1.1 * 12, textH = lineH * 3;
+    words.style.setProperty('--pi-fs', fs + 'px');
+    words.innerHTML = ['Philadelphia', 'Creative', 'Alliance'].map(function (w, line) {
+      return w.split('').map(function (ch, n) { return '<span style="--i:' + (line * 3 + n) + '">' + ch + '</span>'; }).join('');
+    }).join('\n');
+    var mx, my, wx, wy;
+    if (portrait) {
+      var totH = markW + s * 1.4 + textH;
+      mx = (W - markW) / 2; my = (H - totH) / 2; wx = (W - textW) / 2; wy = my + markW + s * 1.4;
+      words.style.textAlign = 'center';
+    } else {
+      var totW = markW + s * 1.6 + textW;
+      mx = (W - totW) / 2; my = (H - markW) / 2; wx = mx + markW + s * 1.6; wy = my + (markW - textH) / 2;
+    }
+    words.style.left = wx + 'px'; words.style.top = wy + 'px'; words.style.width = textW + 'px';
+    var cxm = mx + markW / 2, cym = my + markW / 2;
+    // the mark settles into the live header chips
+    markEl.style.transformOrigin = cxm + 'px ' + cym + 'px';
+    var cr = chipRect();
+    if (cr && cr.width > 2 && cr.bottom > 0 && cr.top < H) {
+      markEl.style.setProperty('--fx', (cr.left + cr.width / 2 - cxm).toFixed(1) + 'px');
+      markEl.style.setProperty('--fy', (cr.top + cr.height / 2 - cym).toFixed(1) + 'px');
+      markEl.style.setProperty('--fk', (cr.width / markW).toFixed(4));
+    }
+    var ring = ov.querySelector('.pi-ring');
+    ring.style.left = cxm + 'px'; ring.style.top = cym + 'px'; ring.style.setProperty('--rs', markW + 'px');
+    // 36 lights spread across the screen (not too close), 9 of each mark colour
+    var pts = [], tries = 0, minD = Math.sqrt(W * H / 36) * 0.62;
+    while (pts.length < 36 && tries++ < 4000) {
+      var x = W * (0.06 + R() * 0.88), y = H * (0.08 + R() * 0.84), ok = true;
+      for (var k = 0; k < pts.length; k++) { if (Math.hypot(pts[k].x - x, pts[k].y - y) < minD) { ok = false; break; } }
+      if (ok) pts.push({ x: x, y: y });
+    }
+    while (pts.length < 36) pts.push({ x: W * R(), y: H * R() });
+    var cols = []; for (var c = 0; c < 36; c++) cols.push(c % 4);
+    for (c = 35; c > 0; c--) { var j = Math.floor(R() * (c + 1)), tmp = cols[c]; cols[c] = cols[j]; cols[j] = tmp; }
+    var slot = [0, 0, 0, 0], html = '';
+    pts.forEach(function (p, i) {
+      var h = cols[i], n = slot[h]++, cx = h % 2, cy = h > 1 ? 1 : 0;
+      var tx = mx + cx * (chip + G) + (n % 3) * (s + g) + s / 2, ty = my + cy * (chip + G) + Math.floor(n / 3) * (s + g) + s / 2;
+      html += '<i class="pi-dot" style="--c:' + HUE[h] + ';background:' + HUE[h] + ';left:' + p.x.toFixed(1) + 'px;top:' + p.y.toFixed(1) + 'px;' +
+        '--d1:' + (0.64 + i * 0.026).toFixed(3) + 's;--d2:' + (2.26 + Math.hypot(tx - cxm, ty - cym) / markW * 0.04).toFixed(3) + 's;' +
+        '--tx:' + (tx - p.x).toFixed(1) + 'px;--ty:' + (ty - p.y).toFixed(1) + 'px;--ts:' + (s / 12).toFixed(3) + '"></i>';
+      p.h = h;
+    });
+    markEl.innerHTML = html;
+    // network: the shortest set of links that joins every light (grown from the first)
+    var lines = '', inTree = [true], n = pts.length;
+    for (var e = 1; e < n; e++) {
+      var bestA = 0, bestB = 0, bd = 1e9;
+      for (var a = 0; a < n; a++) if (inTree[a]) for (var b = 0; b < n; b++) if (!inTree[b]) {
+        var d = Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y); if (d < bd) { bd = d; bestA = a; bestB = b; }
+      }
+      inTree[bestB] = true;
+      lines += '<line x1="' + pts[bestA].x.toFixed(1) + '" y1="' + pts[bestA].y.toFixed(1) + '" x2="' + pts[bestB].x.toFixed(1) + '" y2="' + pts[bestB].y.toFixed(1) +
+        '" stroke="' + HUE[pts[bestB].h] + '" style="--len:' + Math.ceil(bd) + ';--d1:' + (0.90 + e * 0.026).toFixed(3) + 's"/>';
+    }
+    svg.innerHTML = lines;
+    // the hand-off: the page's own ground laid tile by tile, outward from the mark
+    var cell = Math.ceil(Math.max(W, H) / (portrait ? 9 : 16)), cells = '', far = Math.hypot(W, H);
+    for (var yy = 0; yy < H; yy += cell) for (var xx = 0; xx < W; xx += cell) {
+      var dd = Math.hypot(xx + cell / 2 - cxm, yy + cell / 2 - cym) / far;
+      cells += '<i class="pi-cell" style="left:' + xx + 'px;top:' + yy + 'px;width:' + (cell + 1) + 'px;height:' + (cell + 1) + 'px;' +
+        '--d:' + (3.75 + dd * 0.29 + R() * 0.05).toFixed(2) + 's;--r:' + ((R() - 0.5) * 50).toFixed(0) + 'deg"></i>';
+    }
+    ov.querySelector('.pi-cells').innerHTML = cells;
+    if (TEST) { seek2d(t); exposeHook(); return; }
+    if (t > 0) anims().forEach(function (an) { an.currentTime = t * 1000; });
+    startClock(t);
+  }
+
+  function anims() { return ov.getAnimations ? ov.getAnimations({ subtree: true }) : []; }
+  function seek2d(s) { anims().forEach(function (an) { an.pause(); an.currentTime = s * 1000; }); }
+
+  /* ---------- clock (visible time only) ---------- */
+  function startClock(from) {
+    t = from; visible = from; last = performance.now(); startedAt = last;
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
+  }
+  var frames = [], guardDone = !GUARD;
+  function tick(now) {
+    if (done) return;
+    var dt = Math.min((now - last) / 1000, 0.1); last = now;
+    if (!document.hidden) { t += dt; visible += dt; }
+    if (mode === '3d' && scene3d) {
+      if (!guardDone) {
+        if (t >= 0.6) frames.push(now);
+        if (t >= 1.05) {
+          guardDone = true;
+          var avg = frames.length > 1 ? (frames[frames.length - 1] - frames[0]) / (frames.length - 1) : 0;
+          if (avg > 50) { run2d(); return; }
+        }
+      }
+      try { scene3d.render(Math.min(t, END)); } catch (e) { run2d(); return; }   // run2d started its own loop
+    }
+    if (t >= END || visible >= FAILSAFE) { finish(); return; }
+    raf = requestAnimationFrame(tick);
+  }
+  document.addEventListener('visibilitychange', function () { last = performance.now(); });
+
+  function finish() {
+    if (done) return; done = true;
+    clearInterval(wallTimer);
+    cancelAnimationFrame(raf);
+    document.removeEventListener('keydown', onKey, true);
+    if (scene3d) { try { scene3d.dispose(); } catch (e) {} scene3d = null; }
+    // if a keyboard user was on Skip, put them at the top of the page rather than on <body>
+    var hadFocus = ov && ov.contains(document.activeElement);
+    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    inerted.forEach(function (el) { el.inert = false; });
+    root.classList.remove('pca-intro', 'pca-intro-cover');
+    var target = hadFocus && document.querySelector('.topbar .brand');
+    if (target) { try { target.focus({ preventScroll: true }); } catch (e) {} }
+  }
+
+  /* ---------- 3D attempt ---------- */
+  function webglOK() {
+    try {
+      // three r169 is WebGL2-only: a WebGL1-only device goes straight to the 2D version
+      var c = document.createElement('canvas'), gl = c.getContext('webgl2');
+      if (!gl) return false;
+      var lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function try3d() {
+    var settled = false;
+    var timer = setTimeout(function () { if (!settled) { settled = true; run2d(); } }, TEST ? 120000 : LOAD_WAIT * 1000);
+    import(url3d).then(function (m) {
+      if (settled || done) return;
+      return m.create(ov, {
+        test: TEST, chipRect: chipRect,
+        onLost: function () { if (mode === '3d' && !done) run2d(); }
+      }).then(function (sc) {
+        if (settled || done) { sc.dispose(); return; }
+        settled = true; clearTimeout(timer);
+        scene3d = sc; mode = '3d'; ov.classList.add('is-3d');
+        if (TEST) { sc.render(0); exposeHook(); return; }
+        startClock(0);
+      });
+    }).catch(function () { if (!settled) { settled = true; clearTimeout(timer); run2d(); } });
+  }
+
+  function start() {
+    if (RT) window.__introMode = function () { return done ? 'done' : mode; };
+    build();
+    if (!FORCE2D && webglOK()) try3d(); else run2d();
+  }
+
+  // test only: deterministic frames; the hook stays alive after the last frame
+  function exposeHook() {
+    if (window.__introSeek) return;
+    window.__introSeek = function (s) {
+      t = s;
+      var over = s >= END;
+      ov.style.display = over ? 'none' : '';
+      root.classList.toggle('pca-intro', !over);
+      if (mode === '3d' && scene3d) scene3d.render(Math.min(s, END));
+      else if (mode === '2d') seek2d(s);
+      return mode;
+    };
+    window.__introMode = function () { return mode; };
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
