@@ -31,11 +31,18 @@ from pathlib import Path
 
 from tools.profile_schema import Profile, availability_is_current, discipline_by_slug
 
-SITE = "https://philadelphiacreativealliance.com"
+# www is the canonical address (main, commit 7902b7f): canonical, og and badge
+# links on generated pages must name the same host index.html does.
+SITE = "https://www.philadelphiacreativealliance.com"
 
 # Same endpoint the join forms on index.html post to (commit 3a559d2). Wired, delivery
 # unconfirmed — do not describe the contact form as working until a submission is seen.
 FORMSPREE_ID = "mbdnqlvo"
+
+# Shown at the top of every page rendered with draft=True (tools/profiles.py
+# --preview). Drafts are for the artist to review before they agree, in
+# writing, to be listed; the page must say so on its face, not only in a URL.
+DRAFT_NOTE = "Draft \u2014 for the artist\u2019s review; not published"
 
 STATUS_LABEL = {
     "open": "Taking work now",
@@ -70,7 +77,14 @@ def _hero_image(profile: Profile) -> str:
     return "tile.webp"
 
 
-def render_profile(profile: Profile, today: date) -> str:
+def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
+    """Render one profile page.
+
+    `draft=True` is the review copy: it carries DRAFT_NOTE as the first thing
+    on the page, and its contact form has no action and a disabled button, so
+    a review copy opened in a browser cannot send a real message through the
+    live relay. The published build never passes it.
+    """
     base = f"{SITE}/img/artists/{profile.slug}"
     hero = f"{base}/{_hero_image(profile)}"
     url = f"{SITE}/artists/{profile.slug}/"
@@ -138,11 +152,26 @@ def render_profile(profile: Profile, today: date) -> str:
     # into "&lt;a href=..." before it's placed in the document.
     snippet = _e(f'<a href="{url}">Member, Philadelphia Creative Alliance</a>')
 
+    draft_note = (
+        f'<p class="draft-note" role="note">{_e(DRAFT_NOTE)}</p>\n' if draft else ""
+    )
+    form_open = (
+        "<form>"
+        if draft
+        else f'<form action="https://formspree.io/f/{FORMSPREE_ID}" method="POST">'
+    )
+    submit = (
+        '<button type="submit" disabled>Send (off in this draft)</button>'
+        if draft
+        else '<button type="submit">Send</button>'
+    )
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
 <title>{_e(profile.name)} — Philadelphia Creative Alliance</title>
 <link rel="canonical" href="{_e(url)}">
 <meta name="description" content="{_e(profile.tagline)}">
@@ -154,7 +183,7 @@ def render_profile(profile: Profile, today: date) -> str:
 <link rel="stylesheet" href="/artists/profile.css">
 </head>
 <body>
-<header class="profile-head">
+{draft_note}<header class="profile-head">
 {portrait}
 <h1>{_e(profile.name)}</h1>
 <ul class="tags">{tags}</ul>
@@ -172,13 +201,13 @@ def render_profile(profile: Profile, today: date) -> str:
 <section class="links"><ul>{links}</ul></section>
 <section class="contact">
 <h2>Get in touch</h2>
-<form action="https://formspree.io/f/{FORMSPREE_ID}" method="POST">
+{form_open}
 <input type="hidden" name="profile" value="{_e(profile.slug)}">
 <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" hidden>
 <label>Your name <input type="text" name="name" required></label>
 <label>Your email <input type="email" name="email" required></label>
 <label>Message <textarea name="message" rows="5" required></textarea></label>
-<button type="submit">Send</button>
+{submit}
 </form>
 <p class="relay">This form goes to the Alliance, which passes it on to the member. Their address is not published here.</p>
 </section>

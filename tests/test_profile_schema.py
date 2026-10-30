@@ -333,3 +333,31 @@ def test_numeric_updated_is_treated_as_stale(tmp_path):
     availability = {"status": "open", "openTo": ["commissions"], "updated": 20260701}
     profile = load_profile(write_profile(tmp_path, availability=availability))
     assert not availability_is_current(profile, TODAY)
+
+
+def test_a_draft_loads_without_consent(tmp_path):
+    """A live:false draft is shown to the artist before they agree, so it has
+    no consent to record yet. It must still load — and stay not-live."""
+    data = {k: v for k, v in VALID.items() if k != "consent"}
+    data["live"] = False
+    p = tmp_path / "draft.json"
+    p.write_text(json.dumps(data))
+    profile = load_profile(p)
+    assert profile.live is False
+    assert profile.consent == {}
+
+
+def test_flipping_a_draft_to_live_without_consent_fails(tmp_path):
+    for live in (True, "false"):
+        data = {k: v for k, v in VALID.items() if k != "consent"}
+        data["live"] = live
+        p = tmp_path / "draft.json"
+        p.write_text(json.dumps(data))
+        with pytest.raises(ProfileError, match="consent"):
+            load_profile(p)
+
+
+def test_a_live_profile_with_partial_consent_still_fails(tmp_path):
+    consent = {"listed": True, "images": True, "date": ""}
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent))

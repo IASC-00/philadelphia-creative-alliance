@@ -987,9 +987,80 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
     return 0
 
 
+def _inside_a_git_work_tree(path: Path) -> Path | None:
+    """The first directory at or above `path` that holds a `.git`, or None."""
+    for candidate in (path, *path.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def preview(profiles_dir: Path, src_dir: Path, out: Path, today: date) -> int:
+    """Render every profile in `profiles_dir` — live or not — as a draft review
+    copy under `out`, for the artist to read before they agree to be listed.
+
+    Never writes into the site. `out` must be outside every git work tree: the
+    repo is public and Pages serves every committed file (.nojekyll), so a
+    preview that landed in the tree would be one `git add` away from being
+    published. For the same reason draft profile JSON belongs outside the repo
+    too (pass it with --profiles-dir); `live: false` keeps a record off the
+    wall and out of artists/, but not the record itself out of a public repo.
+
+    Pages use the site's absolute paths (/artists/profile.css,
+    /img/artists/<slug>/...), so serve `out` as a web root to view them.
+    """
+    out = Path(out).resolve()
+    repo = _inside_a_git_work_tree(out)
+    if repo is not None:
+        print(f"Refusing to preview into {out}: it is inside the git work tree {repo}.")
+        return 2
+    try:
+        profiles = load_all(profiles_dir)
+    except ProfileError as exc:
+        print(f"FAILED: {exc}")
+        return 1
+    if not profiles:
+        print(f"No profiles found in {profiles_dir}.")
+        return 1
+    (out / "artists").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / "artists" / "profile.css", out / "artists" / "profile.css")
+    for profile in profiles:
+        process_profile_images(profile, src_dir, out / "img" / "artists")
+        page = out / "artists" / profile.slug / "index.html"
+        page.parent.mkdir(parents=True, exist_ok=True)
+        page.write_text(render_profile(profile, today, draft=True), encoding="utf-8")
+        state = "live" if profile.live else "not live"
+        print(f"  draft {profile.slug} ({state}) -> {page}")
+    return 0
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--check", action="store_true", help="verify outputs only")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help="verify outputs only")
+    mode.add_argument(
+        "--preview",
+        metavar="OUT",
+        type=Path,
+        help="render every profile as a draft review copy into OUT (outside the repo)",
+    )
+    ap.add_argument(
+        "--profiles-dir", type=Path, help="with --preview: read profiles from here"
+    )
+    ap.add_argument(
+        "--intake-dir", type=Path, help="with --preview: read images from here"
+    )
     args = ap.parse_args()
+    if args.preview is None and (args.profiles_dir or args.intake_dir):
+        ap.error("--profiles-dir and --intake-dir only apply to --preview")
+    if args.preview is not None:
+        sys.exit(
+            preview(
+                args.profiles_dir or PROFILES_DIR,
+                args.intake_dir or INTAKE_DIR,
+                args.preview,
+                date.today(),
+            )
+        )
     runner = check if args.check else generate
     sys.exit(runner(PROFILES_DIR, INTAKE_DIR, ROOT, date.today()))

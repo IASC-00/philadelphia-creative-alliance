@@ -60,3 +60,7 @@ dialog form { padding: .75rem; text-align: right; }
   .enlarge img { transition: opacity .15s ease; }
   .enlarge:hover img { opacity: .88; }
 }
+
+/* Review copies only (render_profile(draft=True)); published pages never carry it. */
+.draft-note { font: .8rem/1.4 ui-monospace, monospace; letter-spacing: .04em; border: 1px solid var(--accent); color: var(--text); padding: .6rem .8rem; margin: 0 0 1.5rem; }
+.contact button:disabled { opacity: .55; cursor: not-allowed; }

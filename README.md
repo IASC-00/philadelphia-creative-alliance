@@ -104,6 +104,19 @@ originals are on disk; elsewhere (a fresh clone, CI) it compares the committed m
 against what is on disk and says so. Page HTML comes from the committed JSON alone, so it
 is always rebuilt and compared.
 
+**Drafts for an artist to review** go outside the repo, never in `profiles/`. The repo is
+public and Pages serves every committed file, so a draft's JSON in `profiles/` is readable on
+the web even with `live: false`. Write the draft with `live: false` (a draft needs no
+`consent` block; a live profile still does), then render a review copy:
+
+    python3 tools/profiles.py --preview ~/somewhere/out --profiles-dir ~/somewhere/drafts --intake-dir ~/somewhere/intake
+
+Each review page opens with "Draft — for the artist's review; not published" and its contact
+form is switched off. `--preview` refuses any output folder inside a git work tree. Serve the
+output folder as a web root to view it (pages use the site's absolute paths).
+
+Every profile page carries `noindex, nofollow`, matching the homepage until launch.
+
 **To take a member down, set `live: false` on their profile and re-run the generator.** That
 is what removes their page and images. Deleting the record instead leaves the published page
 and photos in place — the generator warns and `--check` reports the page as an orphan.

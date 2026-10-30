@@ -95,7 +95,7 @@ def test_stale_availability_drops_the_badge_but_keeps_open_to(tmp_path):
 def test_og_image_points_at_the_first_work(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
     assert (
-        'content="https://philadelphiacreativealliance.com'
+        'content="https://www.philadelphiacreativealliance.com'
         '/img/artists/example-artist/work-01.webp"' in html
     )
 
@@ -104,7 +104,7 @@ def test_og_image_falls_back_to_the_tile(tmp_path):
     profile = load_profile(write_profile(tmp_path, works=[], portrait=None))
     html = render_profile(profile, TODAY)
     assert (
-        'content="https://philadelphiacreativealliance.com'
+        'content="https://www.philadelphiacreativealliance.com'
         '/img/artists/example-artist/tile.webp"' in html
     )
 
@@ -113,7 +113,7 @@ def test_og_image_uses_the_portrait_when_there_are_no_works(tmp_path):
     profile = load_profile(write_profile(tmp_path, works=[]))
     html = render_profile(profile, TODAY)
     assert (
-        'content="https://philadelphiacreativealliance.com'
+        'content="https://www.philadelphiacreativealliance.com'
         '/img/artists/example-artist/portrait.webp"' in html
     )
 
@@ -314,3 +314,37 @@ def test_accent_surface_meets_wcag_aa_in_both_themes():
             f"{theme}: {on_accent} on {surface} is {ratio:.2f}:1, below the "
             "4.5:1 WCAG AA minimum for body text"
         )
+
+
+def test_every_page_is_noindex_while_the_site_is_a_draft(tmp_path):
+    """index.html carries noindex until launch (main, d9391c5); a profile page
+    is reachable by link and must not be indexed ahead of the homepage."""
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert '<meta name="robots" content="noindex, nofollow">' in html
+
+
+def test_canonical_is_on_www(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert (
+        '<link rel="canonical" href="https://www.philadelphiacreativealliance.com'
+        '/artists/example-artist/">' in html
+    )
+
+
+def test_published_page_has_no_draft_note_and_a_live_form(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert "draft-note" not in html
+    assert "for the artist\u2019s review" not in html
+    assert 'action="https://formspree.io/f/' in html
+    assert '<button type="submit">Send</button>' in html
+
+
+def test_draft_page_says_so_and_cannot_send(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY, draft=True)
+    body = html.split("<body>", 1)[1]
+    assert body.lstrip().startswith(
+        '<p class="draft-note" role="note">'
+        "Draft — for the artist’s review; not published</p>"
+    )
+    assert "formspree.io" not in html
+    assert "<button type=\"submit\" disabled>" in html

@@ -19,11 +19,12 @@ from tools.profiles import (
     _swap_into_place,
     check,
     generate,
+    preview,
     render_config_blocks,
     rewrite_block,
 )
 
-from tests.test_profile_schema import write_profile
+from tests.test_profile_schema import VALID, write_profile
 
 TODAY = date(2026, 7, 26)
 
@@ -1610,3 +1611,37 @@ def test_discipline_labels_joins_two_and_skips_an_unknown_slug():
     assert out["two"] == "Painters, Sculptors"
     assert out["unknown"] == ""
     assert "undefined" not in out["unknown"]
+
+
+# --- preview (draft review copies) -----------------------------------------
+
+
+def test_preview_renders_a_not_live_draft_outside_the_tree(tmp_path):
+    profiles = tmp_path / "drafts"
+    profiles.mkdir()
+    data = {k: v for k, v in VALID.items() if k not in ("consent", "portrait", "works")}
+    data["live"] = False
+    (profiles / "example-artist.json").write_text(json.dumps(data))
+    out = tmp_path / "out"
+    assert preview(profiles, tmp_path / "intake", out, date(2026, 7, 26)) == 0
+    page = (out / "artists" / "example-artist" / "index.html").read_text()
+    assert "Draft — for the artist’s review; not published" in page
+    assert (out / "artists" / "profile.css").is_file()
+    assert (out / "img" / "artists" / "example-artist" / "tile.webp").is_file()
+
+
+def test_preview_refuses_to_write_inside_a_git_work_tree(tmp_path):
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    profiles = tmp_path / "drafts"
+    profiles.mkdir()
+    data = {**VALID, "live": False, "portrait": None, "works": []}
+    (profiles / "example-artist.json").write_text(json.dumps(data))
+    out = repo / "site" / "preview"
+    assert preview(profiles, tmp_path / "intake", out, date(2026, 7, 26)) == 2
+    assert not out.exists()
+
+
+def test_the_real_repo_is_a_refused_preview_target():
+    assert preview(ROOT / "profiles", ROOT / "intake", ROOT / "preview", date(2026, 7, 26)) == 2
+    assert not (ROOT / "preview").exists()

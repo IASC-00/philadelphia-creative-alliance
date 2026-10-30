@@ -168,7 +168,14 @@ def load_profile(path: Path) -> Profile:
     name = _require(data, "name")
     tagline = _require(data, "tagline")
     disciplines = _require(data, "disciplines")
-    consent = _require(data, "consent")
+    live = bool(data.get("live", True))
+    # Consent gates publication, so it is required of every live profile and
+    # only of those. A `live: false` record is a draft the artist has not yet
+    # agreed to (or a takedown): it is never rendered or listed, and flipping
+    # it to live without a full consent block fails here exactly as before.
+    # A non-boolean `live` such as the string "false" is truthy, so it lands on
+    # the strict side.
+    consent = _require(data, "consent") if live else data.get("consent") or {}
 
     if len(tagline) > MAX_TAGLINE:
         raise ProfileError(f"tagline is {len(tagline)} characters, maximum is 90")
@@ -181,7 +188,9 @@ def load_profile(path: Path) -> Profile:
         if slug not in DISCIPLINE_SLUGS:
             raise ProfileError(f"unknown discipline: {slug}")
 
-    if not (consent.get("listed") and consent.get("images") and consent.get("date")):
+    if live and not (
+        consent.get("listed") and consent.get("images") and consent.get("date")
+    ):
         raise ProfileError("consent: listed, images and date are all required")
 
     raw_works = data.get("works", [])
@@ -220,7 +229,7 @@ def load_profile(path: Path) -> Profile:
         ),
         consent=consent,
         joined=data.get("joined", ""),
-        live=bool(data.get("live", True)),
+        live=live,
     )
 
 
