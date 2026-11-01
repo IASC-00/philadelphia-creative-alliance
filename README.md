@@ -1,7 +1,7 @@
 # Philadelphia Creative Alliance
 
 The website for the Philadelphia Creative Alliance — an umbrella connecting and supporting
-creative organisations across Greater Philadelphia: music, visual arts, theatre and performance,
+creative organizations across Greater Philadelphia: music, visual arts, theater and performance,
 film and media, literary, craft and design, arts education, community spaces, and festivals.
 
 Individual artists join free.
