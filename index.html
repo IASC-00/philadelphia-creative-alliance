@@ -245,8 +245,9 @@
   .roster .d { font-family:var(--mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
 
   /* ---------- operators strip ---------- */
-  .founders { display:grid; grid-template-columns: repeat(3,1fr); gap:14px; }
-  @media (max-width:760px){ .founders{ grid-template-columns:1fr; } }
+  .founders { display:grid; grid-template-columns: repeat(4,1fr); gap:14px; }
+  @media (max-width:1000px){ .founders{ grid-template-columns: repeat(2,1fr); } }
+  @media (max-width:560px){ .founders{ grid-template-columns:1fr; } }
   .studio {
     border:1px solid var(--line); border-radius:3px; padding:1.4rem 1.4rem 1.5rem;
     background: var(--ground-2); text-decoration:none; color:inherit;
@@ -442,9 +443,15 @@
       <div class="sec-head">
         <p class="eyebrow">Who runs it</p>
         <h2 id="behind-h">Kept up by working studios.</h2>
-        <p>The Alliance is being put together by a small group of regional studios. They're operators, not members — the idea is that they keep the wall up so member organizations don't have to.</p>
+        <p>The Alliance runs through Gemini Strategic Consultants, a Philadelphia firm, and our studios do the building. They're operators, not members — the idea is that they keep the wall up so member organizations don't have to.</p>
       </div>
       <div class="founders">
+        <a class="studio" href="https://www.geministrategicconsultants.com/" target="_blank" rel="noopener">
+          <span class="k">Runs the Alliance</span>
+          <h3>Gemini Strategic Consultants</h3>
+          <span>Brings together the organizations a hard piece of work needs, and builds what it takes to run it.</span>
+          <span class="link">geministrategic<wbr>consultants.com&nbsp;↗</span>
+        </a>
         <a class="studio" href="https://upwield.com" target="_blank" rel="noopener">
           <span class="k">Design &amp; AI studio</span>
           <h3>Upwield</h3>
