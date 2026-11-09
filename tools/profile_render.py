@@ -121,7 +121,8 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
     portrait_src = (
         _image_name(profile.portrait.src) if profile.portrait else "tile.webp"
     )
-    portrait_alt = profile.portrait.alt if profile.portrait else f"{profile.name} tile"
+    # The generated tile is decoration: the name is the heading right below it.
+    portrait_alt = profile.portrait.alt if profile.portrait else ""
     portrait = (
         f'<img class="portrait" src="/img/artists/{_e(profile.slug)}/'
         f'{_e(portrait_src)}" alt="{_e(portrait_alt)}">'
@@ -199,7 +200,7 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 {draft_note}<a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
 <a class="brand" href="/"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Philadelphia Creative Alliance</span></a>
-<nav aria-label="Primary"><a href="/#artists">Artists</a><a href="/#join">Join</a></nav>
+<nav aria-label="Primary"><a href="/#artists">Artists</a><a href="/#join-artist">Join</a></nav>
 </header>
 <main id="main">
 <header class="profile-head">

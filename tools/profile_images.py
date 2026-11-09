@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from tools.mosaic import build_org_tile, save_asset, sha256_of
 from tools.profile_schema import Profile, ProfileError, discipline_by_slug
@@ -130,7 +130,17 @@ def process_profile_images(
         source = Path(src_dir) / item.src
         if not source.exists():
             raise FileNotFoundError(f"{profile.slug}: image not found: {item.src}")
-        with Image.open(source) as opened:
+        # Only the formats the site publishes from (exit-gate 8 Nov, M3): a
+        # crafted PSD/EPS/TIFF in intake/ would otherwise reach Pillow's
+        # riskiest decoders on the build machine. Detection is by content,
+        # so a renamed file is caught too.
+        try:
+            opened = Image.open(source, formats=["JPEG", "PNG", "WEBP"])
+        except UnidentifiedImageError:
+            raise ProfileError(
+                f"{profile.slug}: {item.src} must be a JPEG, PNG or WebP image"
+            ) from None
+        with opened:
             resized = resize_to_long_edge(_normalize_mode(opened), LONG_EDGE)
         target = out_dir / f"{Path(item.src).stem}.webp"
         save_asset(resized, target)

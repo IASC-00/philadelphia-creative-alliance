@@ -156,3 +156,16 @@ def test_fallback_tile_uses_the_first_discipline_hue(tmp_path):
     sculptor = load_profile(write_profile(tmp_path, disciplines=["sculptors"]))
     assert painter.slug == sculptor.slug
     assert fallback_tile(painter).tobytes() != fallback_tile(sculptor).tobytes()
+
+
+# Exit-gate 8 Nov (M3): member-submitted files are opened only as the three
+# formats the site publishes from. PSD, EPS, TIFF and BMP carry the worst of
+# Pillow's parser advisories and are refused before any decoder runs.
+@pytest.mark.parametrize("fmt,ext", [("TIFF", "tif"), ("BMP", "bmp"), ("GIF", "gif")])
+def test_only_jpeg_png_and_webp_are_opened(tmp_path, fmt, ext):
+    src = tmp_path / "src"; src.mkdir()
+    Image.new("RGB", (40, 40), (1, 2, 3)).save(src / f"work.jpg", format=fmt)
+    works = [{"src": "work.jpg", "alt": "A work."}]
+    profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
+    with pytest.raises(ProfileError, match="JPEG, PNG or WebP"):
+        process_profile_images(profile, src, tmp_path / "out")

@@ -159,6 +159,16 @@ def _image(raw: dict, where: str) -> Work:
     )
 
 
+def _is_iso_date(value) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", value))
+
+
 def load_profile(path: Path) -> Profile:
     # Explicit encoding, never the platform default: artist names are the
     # field most likely to carry non-ASCII, and an implicit decode produces
@@ -168,7 +178,11 @@ def load_profile(path: Path) -> Profile:
     name = _require(data, "name")
     tagline = _require(data, "tagline")
     disciplines = _require(data, "disciplines")
-    live = bool(data.get("live", True))
+    # Only the JSON literals true and false. A missing flag or the string
+    # "false" used to publish a draft (exit-gate 8 Nov, M2).
+    if "live" not in data or not isinstance(data["live"], bool):
+        raise ProfileError("live must be true or false (JSON, not text)")
+    live = data["live"]
     # Consent gates publication, so it is required of every live profile and
     # only of those. A `live: false` record is a draft the artist has not yet
     # agreed to (or a takedown): it is never rendered or listed, and flipping
@@ -191,15 +205,21 @@ def load_profile(path: Path) -> Profile:
     # Image consent covers the member's own images. A profile that shows none
     # (no works, no portrait) renders only the generated tile, so a member can
     # be listed before they send photos; adding the first image re-arms it.
+    # Flags must be the literal true: a sentence such as "Declined; do not
+    # list" is non-empty and used to pass (exit-gate 8 Nov, M1). How consent
+    # was given goes in its own free-text field, `how`.
+    if "works" in data and not isinstance(data["works"], list):
+        raise ProfileError("works must be a list")
     shows_images = bool(data.get("works")) or bool(data.get("portrait"))
-    if live and not (
-        consent.get("listed")
-        and consent.get("date")
-        and (consent.get("images") or not shows_images)
-    ):
-        raise ProfileError("consent: listed, images and date are all required")
+    if live:
+        if consent.get("listed") is not True:
+            raise ProfileError("consent: listed must be true")
+        if not _is_iso_date(consent.get("date")):
+            raise ProfileError("consent: date must be YYYY-MM-DD")
+        if shows_images and consent.get("images") is not True:
+            raise ProfileError("consent: images must be true when the profile shows images")
 
-    raw_works = data.get("works", [])
+    raw_works = data.get("works") or []
     if len(raw_works) > MAX_WORKS:
         raise ProfileError(f"works: at most {MAX_WORKS} allowed")
     works = tuple(_image(w, f"works[{i}]") for i, w in enumerate(raw_works))

@@ -6,8 +6,8 @@ film and media, literary, craft and design, arts education, community spaces, an
 
 Individual artists join free.
 
-**Status: working draft, not launched.** `philadelphiacreativealliance.com` is registered but
-still points at registrar parking — the site is not serving there yet. The join forms are wired
+**Status: working draft, not launched.** The site serves at `www.philadelphiacreativealliance.com`
+(GitHub Pages) but is kept out of search engines (noindex) until launch. The forms are wired
 to a Formspree endpoint, delivery unconfirmed — no submission has been seen arriving, so don't
 describe them as working. Donations are off until the Alliance has an entity to receive them.
 

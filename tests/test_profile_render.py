@@ -363,7 +363,7 @@ def test_every_page_carries_the_site_header_back_to_the_wall(tmp_path):
     assert 'href="/"' in head.group(1)
     assert "Philadelphia Creative Alliance" in head.group(1)
     assert 'href="/#artists"' in head.group(1)
-    assert 'href="/#join"' in head.group(1)
+    assert 'href="/#join-artist"' in head.group(1)
 
 
 def test_page_has_a_skip_link_and_a_main_landmark(tmp_path):
@@ -391,3 +391,8 @@ def test_works_section_is_omitted_when_there_are_no_works(tmp_path):
 def test_links_section_is_omitted_when_there_are_no_links(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path, links=[])), TODAY)
     assert 'class="links"' not in html
+
+
+def test_generated_tile_is_decorative_not_a_repeat_of_the_name(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path, portrait=None)), TODAY)
+    assert re.search(r'<img class="portrait" src="[^"]*tile\.webp" alt="">', html)

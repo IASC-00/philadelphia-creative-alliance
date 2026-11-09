@@ -24,8 +24,9 @@
     "updated": ""
   },
   "consent": {
-    "listed": "Agreed to be listed; told to Ian Swain, recorded 2026-11-08",
-    "date": "2026-11-08"
+    "listed": true,
+    "date": "2026-11-08",
+    "how": "Agreed to be listed; told to Ian Swain"
   },
   "joined": "2026-11-08",
   "live": true

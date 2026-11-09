@@ -348,13 +348,12 @@ def test_a_draft_loads_without_consent(tmp_path):
 
 
 def test_flipping_a_draft_to_live_without_consent_fails(tmp_path):
-    for live in (True, "false"):
-        data = {k: v for k, v in VALID.items() if k != "consent"}
-        data["live"] = live
-        p = tmp_path / "draft.json"
-        p.write_text(json.dumps(data))
-        with pytest.raises(ProfileError, match="consent"):
-            load_profile(p)
+    data = {k: v for k, v in VALID.items() if k != "consent"}
+    data["live"] = True
+    p = tmp_path / "draft.json"
+    p.write_text(json.dumps(data))
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(p)
 
 
 def test_a_live_profile_with_partial_consent_still_fails(tmp_path):
@@ -383,3 +382,53 @@ def test_image_consent_is_still_required_for_a_portrait_alone(tmp_path):
     consent = {"listed": True, "date": "2026-11-08"}
     with pytest.raises(ProfileError, match="consent"):
         load_profile(write_profile(tmp_path, consent=consent, works=[]))
+
+
+# Exit-gate 8 Nov (M2): a draft must never publish because `live` was left out
+# or written as text. Only the JSON literals true and false are accepted.
+@pytest.mark.parametrize("value", ["false", "true", 1, 0, None, "no"])
+def test_live_must_be_a_real_boolean(tmp_path, value):
+    with pytest.raises(ProfileError, match="live"):
+        load_profile(write_profile(tmp_path, live=value))
+
+
+def test_missing_live_is_an_error_not_a_publish(tmp_path):
+    data = {k: v for k, v in VALID.items() if k != "live"}
+    p = tmp_path / "no-live.json"
+    p.write_text(json.dumps(data))
+    with pytest.raises(ProfileError, match="live"):
+        load_profile(p)
+
+
+# Exit-gate 8 Nov (M1): consent flags are the literal true, never a sentence.
+# A note like "Declined; do not list" is non-empty and used to pass.
+@pytest.mark.parametrize("listed", ["Declined; do not list", "yes", 1, "true"])
+def test_listed_must_be_literally_true(tmp_path, listed):
+    consent = {"listed": listed, "images": True, "date": "2026-11-08"}
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent))
+
+
+@pytest.mark.parametrize("images", ["no", "Not yet, asked 11/10", 1])
+def test_image_consent_must_be_literally_true_when_images_show(tmp_path, images):
+    consent = {"listed": True, "images": images, "date": "2026-11-08"}
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent))
+
+
+@pytest.mark.parametrize("when", ["Nov 8", "8/11/2026", "2026-13-01", 20261108])
+def test_consent_date_must_be_an_iso_date(tmp_path, when):
+    consent = {"listed": True, "images": True, "date": when}
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent))
+
+
+def test_consent_can_carry_a_note_on_how_it_was_given(tmp_path):
+    consent = {"listed": True, "images": True, "date": "2026-11-08",
+               "how": "Agreed by text to Ian Swain"}
+    assert load_profile(write_profile(tmp_path, consent=consent)).live is True
+
+
+def test_works_null_is_a_named_error_not_a_traceback(tmp_path):
+    with pytest.raises(ProfileError, match="works"):
+        load_profile(write_profile(tmp_path, works=None))
