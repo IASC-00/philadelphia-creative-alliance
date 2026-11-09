@@ -170,6 +170,8 @@
   .hero .lede { font-size: 1.14rem; color: var(--ink-soft); margin: 1.6rem 0 1.4rem; max-width: 46ch; }
   .hero .free { font-family:var(--mono); font-size:.74rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink); border-left:3px solid var(--t4); padding-left:.7rem; margin:0 0 2rem; }
   .doors { display:flex; flex-wrap:wrap; gap:.8rem; }
+  .hire-door { font-family:var(--mono); font-size:.74rem; letter-spacing:.06em; color:var(--ink-soft); margin:1.1rem 0 0; }
+  .hire-door a { color:var(--ink); text-underline-offset:.25em; display:inline-block; padding:.7rem 0; }
   /* generated mosaic artwork — see tools/mosaic.py */
   .hero-art {
     background-image: var(--hero-art);
@@ -344,6 +346,7 @@
   <nav class="nav" aria-label="Primary">
     <a class="hide-sm" href="#organisations">Organizations</a>
     <a class="hide-sm" href="#artists">Artists</a>
+    <a class="hide-sm" href="#hire">Hire</a>
     <a class="hide-sm" href="#why">Why</a>
     <a href="#join">Join</a>
     <a class="btn solid" href="#support">Support</a>
@@ -362,6 +365,7 @@
           <a class="btn solid" href="#join">Join as an organization</a>
           <a class="btn" href="#join-artist">Join as an artist — free</a>
         </div>
+        <p class="hire-door">Hiring? <a href="#hire">Find a creative →</a></p>
       </div>
       <div class="hero-art" role="img" aria-label="Generated mosaic artwork: irregular colored tesserae set in dark grout, with gaps where tiles have not yet been laid."></div>
     </div>
@@ -424,6 +428,37 @@
   </section>
 
   <div class="rule" aria-hidden="true"></div>
+
+  <section id="hire" aria-labelledby="hire-h">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Hire from the wall</p>
+        <h2 id="hire-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Looking for a creative?</h2>
+        <p style="color:var(--ink-soft); margin-top:1rem;">Tell us what you need: a muralist for a wall, a band for a night, a photographer for a launch, a designer for a poster. We read every request and come back to you ourselves with members who fit.</p>
+        <p style="color:var(--ink-soft);">The wall is still filling in. If no member fits yet, we'll tell you that straight.</p>
+        <p class="note">Free to ask. Members set their own rates and work with you directly. The Alliance takes no cut.</p>
+      </div>
+      <div>
+        <form id="hireform" novalidate>
+          <input type="hidden" name="type" value="request">
+          <div><label for="hn">Your name or organization</label><input id="hn" name="name" autocomplete="name" required></div>
+          <div><label for="he">Email</label><input id="he" type="email" name="email" autocomplete="email" required></div>
+          <div><label for="hd">What kind of creative?</label>
+            <select id="hd" name="discipline"></select>
+          </div>
+          <div><label for="hj">What's the job?</label><textarea id="hj" name="job" required></textarea></div>
+          <div><label for="hw">When (optional)</label><input id="hw" name="when" placeholder="A date, or rough timing"></div>
+          <div><label for="hl">Where (optional)</label><input id="hl" name="where" placeholder="Neighborhood, venue, or online"></div>
+          <div><label for="hb">Budget (optional)</label><input id="hb" name="budget"></div>
+          <input type="hidden" name="_subject" value="PCA — request for a creative">
+          <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button class="btn solid" type="submit" disabled>Send request</button>
+          <p class="form-ok" id="hireok" role="status" hidden>Thanks — your request is in. We'll come back to you.</p>
+          <p class="form-err" id="hireerr" role="alert" hidden></p>
+        </form>
+      </div>
+    </div>
+  </section>
 
   <section id="why" aria-labelledby="why-h">
     <div class="wrap">
@@ -779,6 +814,14 @@
       });
       kind.appendChild(new Option('Other', 'Other'));
     }
+    var want = byId('hd');
+    if (want) {
+      var any = new Option('Not sure yet', 'Not sure yet'); any.selected = true;
+      want.appendChild(any);
+      PCA.disciplines.forEach(function (d) {
+        want.appendChild(new Option(d.label, d.label));
+      });
+    }
     var disc = byId('ad');
     if (disc) {
       PCA.disciplines.forEach(function (d) {
@@ -926,6 +969,7 @@
   initTabs();
   wireForm('orgform', 'orgok', 'orgerr', 'PCA — organisation application');
   wireForm('artistform', 'artistok', 'artisterr', 'PCA — artist join request');
+  wireForm('hireform', 'hireok', 'hireerr', 'PCA — request for a creative');
   initDonate();
   if (PCA.live) { var dt = document.querySelector('.draft-tag'); if (dt) dt.remove(); }
 </script>
