@@ -783,13 +783,17 @@
     // Route the artist funnel to the artist form. Every discipline chip and the
     // hero's "Join as an artist" point at #join-artist; without this they land
     // on the Organisation tab, which is the wrong door for a free signup.
-    function openArtistTab() {
+    // No `behavior` on the scroll: it follows html's scroll-behavior, so it is smooth, or instant
+    // under reduced motion. A click also puts focus on the artist tab: preventDefault cancels the
+    // #link's own move of the keyboard position, and without it the next Tab went back up the page.
+    function openArtistTab(moveFocus) {
       select(1, false);
       var panel = byId('join');
-      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (panel) panel.scrollIntoView({ block: 'start' });
+      if (moveFocus) tabs[1].focus({ preventScroll: true });
     }
     document.querySelectorAll('a[href="#join-artist"]').forEach(function (a) {
-      a.addEventListener('click', function (e) { e.preventDefault(); openArtistTab(); });
+      a.addEventListener('click', function (e) { e.preventDefault(); openArtistTab(true); });
     });
     if (window.location.hash === '#join-artist') openArtistTab();
     window.addEventListener('hashchange', function () {
