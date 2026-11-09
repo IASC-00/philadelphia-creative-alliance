@@ -169,3 +169,14 @@ def test_only_jpeg_png_and_webp_are_opened(tmp_path, fmt, ext):
     profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
     with pytest.raises(ProfileError, match="JPEG, PNG or WebP"):
         process_profile_images(profile, src, tmp_path / "out")
+
+
+def test_a_truncated_jpeg_is_a_named_error(tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    Image.new("RGB", (400, 400), (9, 9, 9)).save(src / "work.jpg")
+    data = (src / "work.jpg").read_bytes()
+    (src / "work.jpg").write_bytes(data[: len(data) // 3])
+    works = [{"src": "work.jpg", "alt": "A work."}]
+    profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
+    with pytest.raises(ProfileError, match="could not be read"):
+        process_profile_images(profile, src, tmp_path / "out")

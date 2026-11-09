@@ -136,12 +136,17 @@ def process_profile_images(
         # so a renamed file is caught too.
         try:
             opened = Image.open(source, formats=["JPEG", "PNG", "WEBP"])
-        except UnidentifiedImageError:
+        except (UnidentifiedImageError, Image.DecompressionBombError):
             raise ProfileError(
                 f"{profile.slug}: {item.src} must be a JPEG, PNG or WebP image"
             ) from None
-        with opened:
-            resized = resize_to_long_edge(_normalize_mode(opened), LONG_EDGE)
+        try:
+            with opened:
+                resized = resize_to_long_edge(_normalize_mode(opened), LONG_EDGE)
+        except (OSError, Image.DecompressionBombError) as exc:
+            raise ProfileError(
+                f"{profile.slug}: {item.src} could not be read ({type(exc).__name__})"
+            ) from None
         target = out_dir / f"{Path(item.src).stem}.webp"
         save_asset(resized, target)
         entries[f"{profile.slug}/{target.name}"] = _manifest_entry(target, resized)

@@ -134,6 +134,8 @@ def _image(raw: dict, where: str) -> Work:
     only catch ProfileError (tools/profiles.py's check()) turn into an
     unhandled traceback rather than a named validation failure.
     """
+    if not isinstance(raw, dict):
+        raise ProfileError(f"{where} must be an object with src and alt")
     src = raw.get("src", "")
     alt = raw.get("alt", "")
     if not src:
@@ -190,6 +192,8 @@ def load_profile(path: Path) -> Profile:
     # A non-boolean `live` such as the string "false" is truthy, so it lands on
     # the strict side.
     consent = _require(data, "consent") if live else data.get("consent") or {}
+    if not isinstance(consent, dict):
+        raise ProfileError("consent must be an object")
 
     if len(tagline) > MAX_TAGLINE:
         raise ProfileError(f"tagline is {len(tagline)} characters, maximum is 90")

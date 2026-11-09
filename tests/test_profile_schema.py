@@ -432,3 +432,35 @@ def test_consent_can_carry_a_note_on_how_it_was_given(tmp_path):
 def test_works_null_is_a_named_error_not_a_traceback(tmp_path):
     with pytest.raises(ProfileError, match="works"):
         load_profile(write_profile(tmp_path, works=None))
+
+
+# Exit-gate 8 Nov, second pass (B-2): Python's fromisoformat accepts the basic
+# and week forms; only the extended calendar form YYYY-MM-DD is a consent date.
+@pytest.mark.parametrize("when", ["20261108", "2026-W45-1", "2026-11-08T00:00"])
+def test_consent_date_rejects_non_calendar_iso_forms(tmp_path, when):
+    consent = {"listed": True, "images": True, "date": when}
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent))
+
+
+@pytest.mark.parametrize("works", [{}, "x", 3])
+def test_works_must_be_a_list(tmp_path, works):
+    with pytest.raises(ProfileError, match="works"):
+        load_profile(write_profile(tmp_path, works=works))
+
+
+# B-4: malformed shapes are named validation errors, never a traceback.
+@pytest.mark.parametrize("consent", ["yes", True, [], 1])
+def test_consent_must_be_an_object(tmp_path, consent):
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent))
+
+
+def test_portrait_must_be_an_object(tmp_path):
+    with pytest.raises(ProfileError, match="portrait"):
+        load_profile(write_profile(tmp_path, portrait="x"))
+
+
+def test_each_work_must_be_an_object(tmp_path):
+    with pytest.raises(ProfileError, match="works"):
+        load_profile(write_profile(tmp_path, works=["x"]))

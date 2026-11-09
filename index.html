@@ -878,9 +878,11 @@
     document.querySelectorAll('a[href="#join-artist"]').forEach(function (a) {
       a.addEventListener('click', function (e) { e.preventDefault(); openArtistTab(true); });
     });
-    if (window.location.hash === '#join-artist') openArtistTab();
+    // Arriving from another page (a profile's Join link) must also move focus,
+    // or Firefox and Safari start the next Tab from the top of the page.
+    if (window.location.hash === '#join-artist') openArtistTab(true);
     window.addEventListener('hashchange', function () {
-      if (window.location.hash === '#join-artist') openArtistTab();
+      if (window.location.hash === '#join-artist') openArtistTab(true);
       else if (window.location.hash === '#join') select(0, false);
     });
     // Every organization door (hero, header Join, wall tiles) points at #join.
