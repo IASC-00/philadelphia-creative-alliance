@@ -160,7 +160,7 @@
     cursor: not-allowed; transform: none;
   }
   .btn:disabled:hover, .btn[aria-disabled="true"]:hover { transform: none; }
-  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, pre:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   /* ---------- hero ---------- */
   .hero { padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(3rem,6vw,4.5rem); position: relative; overflow: hidden; }
@@ -560,7 +560,7 @@
         <b>Member · Philadelphia Creative Alliance</b>
       </a>
       <p class="note" style="margin-top:1.6rem;">Paste this anywhere. It's self-contained — no stylesheet, no script, and it renders as the badge above.</p>
-<pre aria-label="Badge embed code">&lt;a href="https://www.philadelphiacreativealliance.com"
+<pre tabindex="0" role="region" aria-label="Badge embed code">&lt;a href="https://www.philadelphiacreativealliance.com"
    style="display:inline-flex;align-items:center;gap:.6rem;padding:.6rem .85rem;
           border:1px solid rgba(23,19,31,.16);border-radius:3px;text-decoration:none;
           color:inherit;font:11px/1 ui-monospace,Menlo,Consolas,monospace;
