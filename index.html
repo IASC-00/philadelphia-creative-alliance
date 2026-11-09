@@ -33,6 +33,7 @@
     --ink-soft: #4C4656;
     --line:     rgba(23,19,31,.16);
     --accent:   #D63F26;   /* vermilion, deepened for light-ground contrast */
+    --accent-text: #BD3822; /* same hue, for small text on the light ground: 4.5:1+ */
     --accent-ink: #FFFFFF;
     --shadow:   0 18px 40px -24px rgba(23,19,31,.5);
     --hero-art: url("img/hero-mosaic-light.webp");
@@ -64,6 +65,7 @@
       --ink-soft: #B4AAC2;
       --line:     rgba(243,238,231,.15);
       --accent:   #F5573B;
+      --accent-text: #F5573B;
       --accent-ink:#1a0a06;
       --shadow:   0 24px 54px -28px rgba(0,0,0,.75);
       --hero-art: url("img/hero-mosaic-dark.webp");
@@ -75,14 +77,14 @@
   }
   :root[data-theme="dark"] {
     --ground:#141019; --ground-2:#1D1826; --ink:#F3EEE7; --ink-soft:#B4AAC2;
-    --line:rgba(243,238,231,.15); --accent:#F5573B; --accent-ink:#1a0a06;
+    --line:rgba(243,238,231,.15); --accent:#F5573B; --accent-text:#F5573B; --accent-ink:#1a0a06;
     --shadow:0 24px 54px -28px rgba(0,0,0,.75);
     --hero-art: url("img/hero-mosaic-dark.webp"); --rule-art: url("img/divider-dark.webp");
     --bar-bg:rgba(20,16,25,.82); --scrim-open:rgba(20,16,25,.77); --line-strong:rgba(243,238,231,.32);
   }
   :root[data-theme="light"] {
     --ground:#E9E7E0; --ground-2:#F3F1EB; --ink:#17131F; --ink-soft:#4C4656;
-    --line:rgba(23,19,31,.16); --accent:#D63F26; --accent-ink:#fff;
+    --line:rgba(23,19,31,.16); --accent:#D63F26; --accent-text:#BD3822; --accent-ink:#fff;
     --shadow:0 18px 40px -24px rgba(23,19,31,.5);
     --hero-art: url("img/hero-mosaic-light.webp"); --rule-art: url("img/divider-light.webp");
     --bar-bg:rgba(233,231,224,.82); --scrim-open:rgba(233,231,224,.77); --line-strong:rgba(23,19,31,.32);
@@ -113,7 +115,7 @@
     font-size: .72rem;
     letter-spacing: .22em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
     margin: 0 0 1.1rem;
   }
   h1, h2, h3 { font-family: var(--serif); font-weight: 700; text-wrap: balance; line-height: 1.05; margin: 0; }
@@ -258,7 +260,7 @@
   .studio:hover { border-color: var(--accent); transform: translateY(-3px); }
   .studio .k { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); }
   .studio h3 { font-size:1.25rem; }
-  .studio .link { font-family:var(--mono); font-size:.74rem; color:var(--accent); margin-top:.4rem; }
+  .studio .link { font-family:var(--mono); font-size:.74rem; color:var(--accent-text); margin-top:.4rem; }
 
   /* ---------- join ---------- */
   .split { display:grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem,4vw,3.5rem); align-items:start; }
@@ -280,7 +282,7 @@
   }
   textarea { min-height:84px; resize:vertical; }
   .form-ok { font-family:var(--mono); font-size:.82rem; color:var(--t4); padding-top:.4rem; }
-  .form-err { font-family:var(--mono); font-size:.82rem; color:var(--accent); padding-top:.4rem; }
+  .form-err { font-family:var(--mono); font-size:.82rem; color:var(--accent-text); padding-top:.4rem; }
   .hp { position:absolute; left:-9999px; }
   .support-card { border:1px solid var(--line); border-radius:3px; padding: clamp(1.6rem,4vw,2.4rem); background: var(--ground-2); }
   .support-card h3 { font-size:1.6rem; margin-bottom:.8rem; }
@@ -310,7 +312,7 @@
   .foot { display:flex; justify-content:space-between; gap:1.5rem; flex-wrap:wrap; align-items:flex-end; }
   .foot .k { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
   .foot h3 { font-size:1.35rem; max-width:30ch; }
-  .draft-tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:2px; padding:.3rem .55rem; }
+  .draft-tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-text); border:1px solid var(--accent-text); border-radius:2px; padding:.3rem .55rem; }
 
   /* ---------- 44px touch targets on phones and tablets ---------- */
   @media (max-width: 1024px) {
@@ -485,7 +487,7 @@
           <span class="k">Runs the Alliance</span>
           <h3>Gemini Strategic Consultants</h3>
           <span>Brings together the organizations a hard piece of work needs, and builds what it takes to run it.</span>
-          <span class="link">geministrategic<wbr>consultants.com&nbsp;↗</span>
+          <span class="link">geministrategic<wbr>consultants.com&nbsp;<span aria-hidden="true">↗</span></span>
         </a>
         <a class="studio" href="https://upwield.com" target="_blank" rel="noopener">
           <span class="k">Design &amp; AI studio</span>
