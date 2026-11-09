@@ -1,0 +1,23 @@
+{
+  "slug": "major-key",
+  "name": "Major Key",
+  "disciplines": ["musicians-sound", "dancers-performers"],
+  "tagline": "Philadelphia artist, host and creator.",
+  "bio": [
+    "Major Key (Quianna) is an artist, host and creator in Philadelphia.",
+    "Her work runs from stages and studios to hosting and curating events."
+  ],
+  "location": "Philadelphia, PA",
+  "portrait": null,
+  "works": [],
+  "links": [
+    {"label": "iammajorkey.com", "url": "https://iammajorkey.com/"}
+  ],
+  "availability": {"status": "open", "openTo": [], "updated": ""},
+  "consent": {
+    "listed": "Agreed to be listed; told to Ian Swain, recorded 2026-11-08",
+    "date": "2026-11-08"
+  },
+  "joined": "2026-11-08",
+  "live": true
+}

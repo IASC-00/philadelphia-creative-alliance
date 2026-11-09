@@ -1,5 +1,21 @@
 {
   "_meta": {
-    "generated": "2026-07-26"
+    "generated": "2026-11-08"
+  },
+  "major-key/index.html": {
+    "sha256": "179c1393537b426ba79399a39c64ac1e016bc30bdaac4a16ef433bd51d21895f"
+  },
+  "major-key/tile.webp": {
+    "height": 380,
+    "sha256": "44cec54ebd7f0f5be0aad369b36902f22316b0f6a101e60fa49f00fe81f85f4b",
+    "width": 520
+  },
+  "slaw/index.html": {
+    "sha256": "37dc955b9c50e4ac358aa65ce776d96e9eb2c230324b29575df4ab557704f8c1"
+  },
+  "slaw/tile.webp": {
+    "height": 380,
+    "sha256": "06cbafa512fd56d9e2d8a7362a6348d8cba4d51f60cc2e86c68c964a4669fd38",
+    "width": 520
   }
 }

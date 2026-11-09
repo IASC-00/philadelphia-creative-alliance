@@ -1,0 +1,24 @@
+{
+  "slug": "slaw",
+  "name": "Shaun “Slaw” Durbin",
+  "disciplines": ["muralists-street"],
+  "tagline": "Philadelphia muralist. Designer of the Belfield Recreation Center murals.",
+  "bio": [
+    "Shaun Durbin paints as Slaw. He is a muralist in Philadelphia and is listed as an artist with Mural Arts Philadelphia.",
+    "He designed the interior murals at the Belfield Recreation Center in East Germantown (2022), a Mural Arts project. The murals show cartoon-like characters doing the things people do in and around the rec center."
+  ],
+  "location": "Philadelphia, PA",
+  "portrait": null,
+  "works": [],
+  "links": [
+    {"label": "Mural Arts artist page", "url": "https://muralarts.org/artists/shaun-durbin/"},
+    {"label": "Belfield Recreation Center murals", "url": "https://muralarts.org/artworks/belfield-recreation-center-interior-murals/"}
+  ],
+  "availability": {"status": "open", "openTo": [], "updated": ""},
+  "consent": {
+    "listed": "Agreed to be listed; told to Ian Swain, recorded 2026-11-08",
+    "date": "2026-11-08"
+  },
+  "joined": "2026-11-08",
+  "live": true
+}
