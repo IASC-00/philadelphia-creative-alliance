@@ -160,7 +160,7 @@
     cursor: not-allowed; transform: none;
   }
   .btn:disabled:hover, .btn[aria-disabled="true"]:hover { transform: none; }
-  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, pre:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   /* ---------- hero ---------- */
   .hero { padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(3rem,6vw,4.5rem); position: relative; overflow: hidden; }
@@ -491,19 +491,19 @@
           <span class="k">Design &amp; AI studio</span>
           <h3>Upwield</h3>
           <span>Brand, web, and lean systems — look sharp, run lean.</span>
-          <span class="link">upwield.com ↗</span>
+          <span class="link">upwield.com <span aria-hidden="true">↗</span></span>
         </a>
         <a class="studio" href="https://futuristamantes.com" target="_blank" rel="noopener">
           <span class="k">Media studio</span>
           <h3>Futuristamantes</h3>
           <span>Cinematic films for places and the people who make them.</span>
-          <span class="link">futuristamantes.com ↗</span>
+          <span class="link">futuristamantes.com <span aria-hidden="true">↗</span></span>
         </a>
         <a class="studio" href="https://iswain.dev" target="_blank" rel="noopener">
           <span class="k">Portfolio</span>
           <h3>The workshop</h3>
           <span>Tools, sites, and builds behind the Alliance.</span>
-          <span class="link">iswain.dev ↗</span>
+          <span class="link">iswain.dev <span aria-hidden="true">↗</span></span>
         </a>
       </div>
     </div>
@@ -602,7 +602,7 @@
         <b>Member · Philadelphia Creative Alliance</b>
       </a>
       <p class="note" style="margin-top:1.6rem;">Paste this anywhere. It's self-contained — no stylesheet, no script, and it renders as the badge above.</p>
-<pre aria-label="Badge embed code">&lt;a href="https://www.philadelphiacreativealliance.com"
+<pre tabindex="0" role="region" aria-label="Badge embed code">&lt;a href="https://www.philadelphiacreativealliance.com"
    style="display:inline-flex;align-items:center;gap:.6rem;padding:.6rem .85rem;
           border:1px solid rgba(23,19,31,.16);border-radius:3px;text-decoration:none;
           color:inherit;font:11px/1 ui-monospace,Menlo,Consolas,monospace;
@@ -861,13 +861,17 @@
     // Route the artist funnel to the artist form. Every discipline chip and the
     // hero's "Join as an artist" point at #join-artist; without this they land
     // on the Organisation tab, which is the wrong door for a free signup.
-    function openArtistTab() {
+    // No `behavior` on the scroll: it follows html's scroll-behavior, so it is smooth, or instant
+    // under reduced motion. A click also puts focus on the artist tab: preventDefault cancels the
+    // #link's own move of the keyboard position, and without it the next Tab went back up the page.
+    function openArtistTab(moveFocus) {
       select(1, false);
       var panel = byId('join');
-      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (panel) panel.scrollIntoView({ block: 'start' });
+      if (moveFocus) tabs[1].focus({ preventScroll: true });
     }
     document.querySelectorAll('a[href="#join-artist"]').forEach(function (a) {
-      a.addEventListener('click', function (e) { e.preventDefault(); openArtistTab(); });
+      a.addEventListener('click', function (e) { e.preventDefault(); openArtistTab(true); });
     });
     if (window.location.hash === '#join-artist') openArtistTab();
     window.addEventListener('hashchange', function () {
