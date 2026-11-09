@@ -2,15 +2,17 @@
    first paint. Plays once per tab on the home page; never on a #link, never with reduced
    motion. Tries the 3D scene (js/intro3d.js, loaded only now); anything wrong with it
    (no WebGL, load error, lost context, a device too slow to keep up) runs the 2D version.
-   Test hooks: ?introtest=1 exposes window.__introSeek(seconds) and never auto-advances;
-   ?introtest=rt plays in real time as a first visit would (ignores once-per-tab, #links and
-   reduced motion, for recording); ?introtest=2d is the same with the 2D version forced.
-   Also ?intro2d=1 (force 2D) and ?introguard=0 (no slow-device check). */
+   Test hooks: ?introtest=1 exposes window.__introSeek(seconds) and never auto-advances
+   (localhost, 127.0.0.1, [::1] and file: only: it switches off the wall-clock failsafe, so it
+   is ignored on the live site); ?introtest=rt plays in real time as a first visit would
+   (ignores once-per-tab, #links and reduced motion, for recording); ?introtest=2d is the same
+   with the 2D version forced. Also ?intro2d=1 (force 2D) and ?introguard=0 (no slow-device check). */
 (function () {
   'use strict';
   var KEY = 'pcaIntroSeen', END = 4.5, FAILSAFE = 6.75, LOAD_WAIT = 1.95;   // 18 Oct: 0.75x the 6 s cut
   var q = location.search;
-  var TEST = /[?&]introtest=1\b/.test(q), RT = /[?&]introtest=(rt|2d)\b/.test(q);
+  var LOCAL = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  var TEST = LOCAL && /[?&]introtest=1\b/.test(q), RT = /[?&]introtest=(rt|2d)\b/.test(q);
   var FORCE2D = /[?&](intro2d=1|introtest=2d)\b/.test(q), GUARD = !/[?&]introguard=0\b/.test(q);
   var path = location.pathname;
   if (!(path === '/' || /\/index\.html$/.test(path))) return;
@@ -24,7 +26,7 @@
   root.classList.add('pca-intro', 'pca-intro-cover');
   // Wall-clock failsafe (exit-gate 11 Oct): independent of the animation loop, so a render
   // error or a very slow device can never leave the cover or the scroll lock up past FAILSAFE
-  // seconds of visible time. Off in ?introtest seek mode, which never auto-advances.
+  // seconds of visible time. Off in ?introtest=1 seek mode (local only), which never auto-advances.
   var wallVisible = 0, wallLast = performance.now(), wallTimer = setInterval(function () {
     var n = performance.now(); if (!document.hidden) wallVisible += (n - wallLast) / 1000; wallLast = n;
     if (!TEST && wallVisible >= FAILSAFE) finish();
