@@ -1,12 +1,14 @@
 /* Homepage intro controller. Loaded (blocking, small) in <head> so the cover is up before
    first paint. Plays once per tab on the home page; never on a #link, never with reduced
    motion. Tries the 3D scene (js/intro3d.js, loaded only now); anything wrong with it
-   (no WebGL, load error, lost context, a device too slow to keep up) runs the 2D version.
+   (no WebGL2, software-only WebGL, load error, lost context, a device too slow to keep up)
+   runs the 2D version.
    Test hooks: ?introtest=1 exposes window.__introSeek(seconds) and never auto-advances
    (localhost, 127.0.0.1, [::1] and file: only: it switches off the wall-clock failsafe, so it
    is ignored on the live site); ?introtest=rt plays in real time as a first visit would
    (ignores once-per-tab, #links and reduced motion, for recording); ?introtest=2d is the same
-   with the 2D version forced. Also ?intro2d=1 (force 2D) and ?introguard=0 (no slow-device check). */
+   with the 2D version forced. Also ?intro2d=1 (force 2D) and ?introguard=0 (no slow-device or
+   software-renderer check). */
 (function () {
   'use strict';
   var KEY = 'pcaIntroSeen', END = 4.5, FAILSAFE = 6.75, LOAD_WAIT = 1.95;   // 18 Oct: 0.75x the 6 s cut
@@ -212,8 +214,17 @@
       // three r169 is WebGL2-only: a WebGL1-only device goes straight to the 2D version
       var c = document.createElement('canvas'), gl = c.getContext('webgl2');
       if (!gl) return false;
+      // ...and so does a software rasteriser (SwiftShader, llvmpipe, WARP): it can't hold the 3D
+      // scene's frame rate, and the slow-device check only trips after seconds of a stalled main
+      // thread. Skipped with ?introguard=0, like that check.
+      var r = String(gl.getParameter(gl.RENDERER) || '');
+      if (/^webkit webgl$/i.test(r)) {   // Chrome and Safari mask RENDERER; Firefox does not need the extension
+        var info = gl.getExtension('WEBGL_debug_renderer_info');
+        if (info) r = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '');
+      }
+      var soft = GUARD && /swiftshader|llvmpipe|softpipe|software|basic render/i.test(r);
       var lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();
-      return true;
+      return !soft;
     } catch (e) { return false; }
   }
 
