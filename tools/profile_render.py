@@ -17,10 +17,11 @@ clock-independent; the byte-stability test alone cannot catch a
 reintroduced clock read, since both of its runs happen on the same day.
 
 Nothing here asserts an outcome the project has not observed. The contact
-form's copy describes where the message goes, not that it arrives: no
-Formspree submission has been confirmed delivered (see FORMSPREE_ID below),
-and if the relay is broken a promise of delivery leaves both sender and
-member believing a message landed when it did not.
+form's copy describes where the message goes, not that it arrives: delivery
+to the Alliance's inbox was confirmed once (see FORMSPREE_ID below), but the
+hand-on to the member is done by a person, and if either step breaks a
+promise of delivery leaves both sender and member believing a message landed
+when it did not.
 """
 
 from __future__ import annotations
@@ -35,8 +36,8 @@ from tools.profile_schema import Profile, availability_is_current, discipline_by
 # links on generated pages must name the same host index.html does.
 SITE = "https://www.philadelphiacreativealliance.com"
 
-# Same endpoint the join forms on index.html post to (commit 3a559d2). Wired, delivery
-# unconfirmed — do not describe the contact form as working until a submission is seen.
+# Same endpoint the join forms on index.html post to (commit 3a559d2). Delivery to the
+# account inbox confirmed 8 Nov 2026 by one test request; the relay to the member is manual.
 FORMSPREE_ID = "mbdnqlvo"
 
 # Shown at the top of every page rendered with draft=True (tools/profiles.py

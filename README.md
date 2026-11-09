@@ -7,9 +7,9 @@ film and media, literary, craft and design, arts education, community spaces, an
 Individual artists join free.
 
 **Status: working draft, not launched.** The site serves at `www.philadelphiacreativealliance.com`
-(GitHub Pages) but is kept out of search engines (noindex) until launch. The forms are wired
-to a Formspree endpoint, delivery unconfirmed — no submission has been seen arriving, so don't
-describe them as working. Donations are off until the Alliance has an entity to receive them.
+(GitHub Pages) but is kept out of search engines (noindex) until launch. The forms post to
+one Formspree endpoint; delivery was confirmed on 8 Nov 2026 (a test request reached the
+account's inbox within seconds). Donations are off until the Alliance has an entity to receive them.
 
 ## This repo
 
