@@ -361,3 +361,25 @@ def test_a_live_profile_with_partial_consent_still_fails(tmp_path):
     consent = {"listed": True, "images": True, "date": ""}
     with pytest.raises(ProfileError, match="consent"):
         load_profile(write_profile(tmp_path, consent=consent))
+
+
+def test_a_live_profile_with_no_images_needs_no_image_consent(tmp_path):
+    """A member can be listed before they send photos: the page then shows
+    only the generated tile, so there is no image of theirs to consent to."""
+    consent = {"listed": True, "date": "2026-11-08"}
+    profile = load_profile(
+        write_profile(tmp_path, consent=consent, works=[], portrait=None)
+    )
+    assert profile.live and profile.works == ()
+
+
+def test_image_consent_is_still_required_once_a_work_is_shown(tmp_path):
+    consent = {"listed": True, "date": "2026-11-08"}
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent, portrait=None))
+
+
+def test_image_consent_is_still_required_for_a_portrait_alone(tmp_path):
+    consent = {"listed": True, "date": "2026-11-08"}
+    with pytest.raises(ProfileError, match="consent"):
+        load_profile(write_profile(tmp_path, consent=consent, works=[]))

@@ -64,3 +64,17 @@ dialog form { padding: .75rem; text-align: right; }
 /* Review copies only (render_profile(draft=True)); published pages never carry it. */
 .draft-note { font: .8rem/1.4 ui-monospace, monospace; letter-spacing: .04em; border: 1px solid var(--accent); color: var(--text); padding: .6rem .8rem; margin: 0 0 1.5rem; }
 .contact button:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Site header: every profile says whose site it is and leads back to the wall. */
+.skip { position: absolute; left: -9999px; top: 0; z-index: 10; background: var(--accent-surface); color: var(--on-accent); font: .75rem/1 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; padding: .7rem 1rem; text-decoration: none; }
+.skip:focus { left: 12px; top: 12px; }
+.site-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; margin-bottom: 2.5rem; border-bottom: 1px solid currentColor; }
+.site-head nav { display: flex; gap: 1.25rem; }
+.site-head a { display: inline-flex; align-items: center; min-height: 44px; font: .75rem/1 ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; }
+.site-head a:hover, .site-head a:focus-visible { text-decoration: underline; }
+.site-head a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.brand { gap: .6rem; }
+.chips { display: inline-grid; grid-template-columns: repeat(2, 7px); grid-auto-rows: 7px; gap: 2px; flex: none; }
+.chips i { display: block; width: 7px; height: 7px; }
+.chips i:nth-child(1) { background: #EC4A2C; } .chips i:nth-child(2) { background: #2F63E6; }
+.chips i:nth-child(3) { background: #F2B01E; } .chips i:nth-child(4) { background: #DB2F86; }

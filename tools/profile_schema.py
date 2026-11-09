@@ -188,8 +188,14 @@ def load_profile(path: Path) -> Profile:
         if slug not in DISCIPLINE_SLUGS:
             raise ProfileError(f"unknown discipline: {slug}")
 
+    # Image consent covers the member's own images. A profile that shows none
+    # (no works, no portrait) renders only the generated tile, so a member can
+    # be listed before they send photos; adding the first image re-arms it.
+    shows_images = bool(data.get("works")) or bool(data.get("portrait"))
     if live and not (
-        consent.get("listed") and consent.get("images") and consent.get("date")
+        consent.get("listed")
+        and consent.get("date")
+        and (consent.get("images") or not shows_images)
     ):
         raise ProfileError("consent: listed, images and date are all required")
 

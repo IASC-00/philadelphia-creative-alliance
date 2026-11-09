@@ -147,6 +147,19 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
         for link in profile.links
     )
 
+    # A heading or an empty wrapper with nothing under it is a broken page:
+    # a member may join before they send photos, links or what they're open to.
+    works_section = f'<section class="works">{works}</section>\n' if works else ""
+    links_section = (
+        f'<section class="links"><ul>{links}</ul></section>\n' if links else ""
+    )
+    availability_section = (
+        '<section class="availability">\n<h2>Open to</h2>\n'
+        f"<ul>{open_to}</ul>\n{confirmed}</section>\n"
+        if open_to
+        else ""
+    )
+
     # Displayed as copyable source text inside <pre><code>, so it must render as
     # visible markup, never be parsed as markup itself: `_e` turns "<a href=..."
     # into "&lt;a href=..." before it's placed in the document.
@@ -183,7 +196,13 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 <link rel="stylesheet" href="/artists/profile.css">
 </head>
 <body>
-{draft_note}<header class="profile-head">
+{draft_note}<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+<a class="brand" href="/"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Philadelphia Creative Alliance</span></a>
+<nav aria-label="Primary"><a href="/#artists">Artists</a><a href="/#join">Join</a></nav>
+</header>
+<main id="main">
+<header class="profile-head">
 {portrait}
 <h1>{_e(profile.name)}</h1>
 <ul class="tags">{tags}</ul>
@@ -192,14 +211,7 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 </header>
 <section class="tagline"><p>{_e(profile.tagline)}</p></section>
 <section class="bio">{bio}</section>
-<section class="works">{works}</section>
-<section class="availability">
-<h2>Open to</h2>
-<ul>{open_to}</ul>
-{confirmed}
-</section>
-<section class="links"><ul>{links}</ul></section>
-<section class="contact">
+{works_section}{availability_section}{links_section}<section class="contact">
 <h2>Get in touch</h2>
 {form_open}
 <input type="hidden" name="profile" value="{_e(profile.slug)}">
@@ -216,6 +228,7 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 <p>Paste this on your own site to link back to the wall.</p>
 <pre><code>{snippet}</code></pre>
 </section>
+</main>
 <footer>
 <a href="/">Philadelphia Creative Alliance</a>
 {member_since}

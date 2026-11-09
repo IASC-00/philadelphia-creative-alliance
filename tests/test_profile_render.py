@@ -240,6 +240,10 @@ def test_stylesheet_covers_every_class_the_renderer_emits():
         ".relay",
         ".badge-snippet",
         "dialog",
+        ".skip",
+        ".site-head",
+        ".brand",
+        ".chips",
     ):
         assert selector in css, f"stylesheet has no rule for {selector}"
 
@@ -348,3 +352,42 @@ def test_draft_page_says_so_and_cannot_send(tmp_path):
     )
     assert "formspree.io" not in html
     assert "<button type=\"submit\" disabled>" in html
+
+
+def test_every_page_carries_the_site_header_back_to_the_wall(tmp_path):
+    """A profile is reached from a shared link more often than from the wall,
+    so the page itself has to say whose site it is and lead back."""
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    head = re.search(r'<header class="site-head">(.*?)</header>', html, re.S)
+    assert head, "site header missing"
+    assert 'href="/"' in head.group(1)
+    assert "Philadelphia Creative Alliance" in head.group(1)
+    assert 'href="/#artists"' in head.group(1)
+    assert 'href="/#join"' in head.group(1)
+
+
+def test_page_has_a_skip_link_and_a_main_landmark(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert '<a class="skip" href="#main">' in html
+    assert '<main id="main">' in html and "</main>" in html
+    assert html.index('<a class="skip"') < html.index('<header class="site-head">')
+
+
+def test_open_to_is_omitted_when_nothing_is_listed(tmp_path):
+    """An "Open to" heading over an empty list is a broken page."""
+    availability = {"status": "open", "openTo": [], "updated": ""}
+    html = render_profile(
+        load_profile(write_profile(tmp_path, availability=availability)), TODAY
+    )
+    assert "Open to" not in html
+    assert 'class="availability"' not in html
+
+
+def test_works_section_is_omitted_when_there_are_no_works(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path, works=[])), TODAY)
+    assert 'class="works"' not in html
+
+
+def test_links_section_is_omitted_when_there_are_no_links(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path, links=[])), TODAY)
+    assert 'class="links"' not in html
