@@ -180,3 +180,64 @@ def test_a_truncated_jpeg_is_a_named_error(tmp_path):
     profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
     with pytest.raises(ProfileError, match="could not be read"):
         process_profile_images(profile, src, tmp_path / "out")
+
+
+# Exit-gate 8 Nov, final pass (M1): every way a submitted file can fail to
+# decode is a named ProfileError, never a traceback out of the CLI.
+def _one_work_profile(tmp_path):
+    works = [{"src": "work.jpg", "alt": "A work."}]
+    return load_profile(write_profile(tmp_path, works=works, portrait=None))
+
+
+def test_a_cut_short_webp_is_a_named_error(tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    Image.new("RGB", (300, 300), (5, 6, 7)).save(src / "work.jpg", format="WEBP")
+    data = (src / "work.jpg").read_bytes()
+    (src / "work.jpg").write_bytes(data[: len(data) // 2])
+    with pytest.raises(ProfileError, match="work.jpg"):
+        process_profile_images(_one_work_profile(tmp_path), src, tmp_path / "out")
+
+
+def test_a_thirty_byte_jpeg_is_a_named_error(tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    Image.new("RGB", (300, 300), (5, 6, 7)).save(src / "work.jpg")
+    (src / "work.jpg").write_bytes((src / "work.jpg").read_bytes()[:30])
+    with pytest.raises(ProfileError, match="work.jpg"):
+        process_profile_images(_one_work_profile(tmp_path), src, tmp_path / "out")
+
+
+def test_a_directory_named_like_an_image_is_a_named_error(tmp_path):
+    src = tmp_path / "src"; src.mkdir(); (src / "work.jpg").mkdir()
+    with pytest.raises(ProfileError, match="work.jpg"):
+        process_profile_images(_one_work_profile(tmp_path), src, tmp_path / "out")
+
+
+def test_a_png_with_a_corrupt_chunk_is_a_named_error(tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    Image.new("RGB", (64, 64), (5, 6, 7)).save(src / "work.jpg", format="PNG")
+    data = bytearray((src / "work.jpg").read_bytes())
+    i = data.index(b"IDAT") + 8; data[i:i + 8] = b"\x00" * 8
+    (src / "work.jpg").write_bytes(bytes(data))
+    with pytest.raises(ProfileError, match="work.jpg"):
+        process_profile_images(_one_work_profile(tmp_path), src, tmp_path / "out")
+
+
+def test_a_decompression_bomb_is_a_named_error(tmp_path, monkeypatch):
+    src = tmp_path / "src"; src.mkdir()
+    Image.new("RGB", (200, 200), (5, 6, 7)).save(src / "work.jpg")
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)   # 40,000 px > 2x limit -> error
+    with pytest.raises(ProfileError, match="work.jpg could not be read"):
+        process_profile_images(_one_work_profile(tmp_path), src, tmp_path / "out")
+
+
+def test_a_broken_png_syntax_error_is_a_named_error(tmp_path, monkeypatch):
+    """Pillow reports some corrupt PNG chunks as SyntaxError while reading
+    pixels (seen in the 8 Nov audit's fuzzing); that must not escape either."""
+    import tools.profile_images as pi
+    src = tmp_path / "src"; src.mkdir()
+    Image.new("RGB", (64, 64), (5, 6, 7)).save(src / "work.jpg", format="PNG")
+    def broken(*a, **k):
+        raise SyntaxError("broken PNG file")
+    monkeypatch.setattr(pi, "resize_to_long_edge", broken)
+    with pytest.raises(ProfileError, match="could not be read"):
+        process_profile_images(_one_work_profile(tmp_path), src, tmp_path / "out")

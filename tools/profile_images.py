@@ -135,15 +135,15 @@ def process_profile_images(
         # riskiest decoders on the build machine. Detection is by content,
         # so a renamed file is caught too.
         try:
-            opened = Image.open(source, formats=["JPEG", "PNG", "WEBP"])
-        except (UnidentifiedImageError, Image.DecompressionBombError):
+            with Image.open(source, formats=["JPEG", "PNG", "WEBP"]) as opened:
+                resized = resize_to_long_edge(_normalize_mode(opened), LONG_EDGE)
+        except UnidentifiedImageError:   # an OSError subclass, so it is caught first
             raise ProfileError(
                 f"{profile.slug}: {item.src} must be a JPEG, PNG or WebP image"
             ) from None
-        try:
-            with opened:
-                resized = resize_to_long_edge(_normalize_mode(opened), LONG_EDGE)
-        except (OSError, Image.DecompressionBombError) as exc:
+        except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as exc:
+            # Truncated or corrupt data, a directory or unreadable path, or an
+            # image too large to decode safely: all stop the build by name.
             raise ProfileError(
                 f"{profile.slug}: {item.src} could not be read ({type(exc).__name__})"
             ) from None
