@@ -8,3 +8,4 @@ docs/superpowers/
 # submitted originals — only the processed WebP is published
 intake/*
 !intake/.gitkeep
+docs/internal/
