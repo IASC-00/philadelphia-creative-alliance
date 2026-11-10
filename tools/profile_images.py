@@ -130,7 +130,7 @@ def process_profile_images(
 
     by_name: dict[str, list[str]] = {}
     for label, name in planned:
-        by_name.setdefault(name, []).append(label)
+        by_name.setdefault(name.lower(), []).append(label)
     for name, labels in sorted(by_name.items()):
         if len(labels) > 1:
             raise ProfileError(
@@ -165,16 +165,26 @@ def process_profile_images(
         save_asset(resized, target)
         entries[f"{profile.slug}/{target.name}"] = _manifest_entry(target, resized)
 
-    if needs_tile:
-        tile = fallback_tile(profile)
-        target = out_dir / "tile.webp"
-        save_asset(tile, target)
-        entries[f"{profile.slug}/{target.name}"] = _manifest_entry(target, tile)
+    entries.update(process_generated_images(profile, out_root))
+    return entries
 
-    for name in BANNER_WALLS:
-        img = build_member_wall(profile.slug, _hue(profile), name)
+
+def process_generated_images(profile: Profile, out_root: Path) -> dict[str, dict]:
+    """Write only the images generated from the profile itself: the banner
+    walls, and the fallback tile when there is no portrait. They need no
+    submitted original, so `tools/profiles.py --check` can always rebuild and
+    compare them, even on a fresh clone where intake/ is empty."""
+    out_dir = Path(out_root) / profile.slug
+    out_dir.mkdir(parents=True, exist_ok=True)
+    entries: dict[str, dict] = {}
+    names = (("tile.webp",) if profile.portrait is None else ()) + BANNER_WALLS
+    for name in names:
+        img = (
+            fallback_tile(profile)
+            if name == "tile.webp"
+            else build_member_wall(profile.slug, _hue(profile), name)
+        )
         target = out_dir / name
         save_asset(img, target)
         entries[f"{profile.slug}/{name}"] = _manifest_entry(target, img)
-
     return entries

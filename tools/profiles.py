@@ -49,7 +49,7 @@ import tempfile
 from datetime import date
 
 from tools.mosaic import ROOT, sha256_of
-from tools.profile_images import process_profile_images
+from tools.profile_images import process_generated_images, process_profile_images
 from tools.profile_render import render_profile
 from tools.profile_schema import (
     DISCIPLINES,
@@ -918,6 +918,19 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
                 print(f"FAILED: {exc}")
                 return 1
 
+    # The generated images (banner walls, fallback tile) need no originals, so
+    # they are rebuilt and compared in full even for profiles whose submitted
+    # images are absent (exit-gate 10 Nov, M1).
+    generated_only: dict[str, dict] = {}
+    unbuildable = [p for p in live if p.slug in absent]
+    if unbuildable:
+        with tempfile.TemporaryDirectory() as scratch:
+            for profile in unbuildable:
+                generated_only.update(
+                    process_generated_images(profile, Path(scratch) / "img" / "artists")
+                )
+    fresh.update(generated_only)
+
     live_slugs = {p.slug for p in live}
     rebuilt_slugs = {p.slug for p in buildable}
     try:
@@ -939,7 +952,7 @@ def check(profiles_dir: Path, src_dir: Path, root: Path, today: date) -> int:
                 )
 
         for key in sorted(image_keys):
-            if key.split("/", 1)[0] not in rebuilt_slugs:
+            if key.split("/", 1)[0] not in rebuilt_slugs and key not in generated_only:
                 # This profile's originals are absent, so there is no rebuild
                 # to compare against; slug-level presence is still knowable
                 # from the profiles, which are committed.

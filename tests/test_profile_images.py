@@ -283,3 +283,13 @@ def test_a_broken_png_syntax_error_is_a_named_error(tmp_path, monkeypatch):
     monkeypatch.setattr(pi, "resize_to_long_edge", broken)
     with pytest.raises(ProfileError, match="could not be read"):
         process_profile_images(_one_work_profile(tmp_path), src, tmp_path / "out")
+
+
+# Exit-gate 10 Nov (L2): macOS disks are case-insensitive by default, so
+# Band.webp and band.webp are one file there.
+@pytest.mark.parametrize("src", ["Band.jpg", "TILE.png", "Wall-Wide.jpg"])
+def test_collisions_ignore_case(tmp_path, src):
+    works = [{"src": src, "alt": "A piece with an unlucky name."}]
+    profile = load_profile(write_profile(tmp_path, works=works, portrait=None))
+    with pytest.raises(ProfileError, match="rename one source"):
+        process_profile_images(profile, tmp_path, tmp_path / "out")

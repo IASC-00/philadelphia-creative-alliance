@@ -58,6 +58,9 @@ MAX_TAGLINE = 90
 STATUSES = frozenset({"open", "limited", "closed"})
 
 
+_SAFE_STEM = re.compile(r"[A-Za-z0-9._-]+")
+
+
 class ProfileError(Exception):
     """A profile that must not be rendered."""
 
@@ -148,6 +151,13 @@ def _image(raw: dict, where: str) -> Work:
         raise ProfileError(
             f"{where}: src {src!r} must be a bare filename inside intake/, "
             "with no directory part"
+        )
+    if not _SAFE_STEM.fullmatch(Path(src).stem):
+        # The published file is <stem>.webp, linked from the profile and the
+        # homepage roster; anything else here breaks or drops that link.
+        raise ProfileError(
+            f"{where}: src {src!r} must use only letters, digits, '.', '_' and '-' "
+            "in its name (rename the file in intake/)"
         )
     if not alt.strip():
         raise ProfileError(f"{where}: missing alt text")

@@ -464,3 +464,21 @@ def test_portrait_must_be_an_object(tmp_path):
 def test_each_work_must_be_an_object(tmp_path):
     with pytest.raises(ProfileError, match="works"):
         load_profile(write_profile(tmp_path, works=["x"]))
+
+
+# Exit-gate 10 Nov (L1): the published file is <stem>.webp, and the homepage
+# roster only accepts [A-Za-z0-9._-] in it; a space, '#' or accent used to pass
+# here and then silently lose the member's picture (or cut the URL at '#').
+@pytest.mark.parametrize(
+    "src", ["Slaw Portrait (1).jpg", "slaw#2.jpg", "café.jpg", 'a"b.jpg', "a?b.jpg"]
+)
+def test_image_src_stem_must_be_url_safe(tmp_path, src):
+    works = [{"src": src, "alt": "A piece."}]
+    with pytest.raises(ProfileError, match="letters, digits"):
+        load_profile(write_profile(tmp_path, works=works))
+
+
+@pytest.mark.parametrize("src", ["work-01.jpg", "Mural_2022.v2.png", "a.webp"])
+def test_url_safe_image_src_still_loads(tmp_path, src):
+    works = [{"src": src, "alt": "A piece."}]
+    assert load_profile(write_profile(tmp_path, works=works)).works[0].src == src

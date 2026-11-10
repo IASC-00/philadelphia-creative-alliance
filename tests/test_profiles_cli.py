@@ -16,6 +16,7 @@ from tools.mosaic import ROOT
 from tools.profile_schema import Availability, Discipline, DISCIPLINES, Profile
 from tools.profiles import (
     _js_string,
+    _roster_image,
     _swap_into_place,
     check,
     generate,
@@ -1681,3 +1682,62 @@ def test_roster_entry_carries_the_portrait_when_there_is_one():
     p = _profile(portrait=Work(src="me.jpg", alt="A portrait."))
     blocks = render_config_blocks([p])
     assert _json_literal_for(blocks["artists"], "img") == "/img/artists/direct/me.webp"
+
+
+# --- exit-gate 10 Nov (M1): generated walls need no originals, so --check must
+# verify them even when a profile's submitted images are absent ---------------
+
+
+def _drop_from_manifest(root, key):
+    path = root / "img" / "artists" / "manifest.json"
+    data = json.loads(path.read_text())
+    target = data.get("artefacts", data)
+    del target[key]
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+
+
+@pytest.mark.parametrize("name", ["band.webp", "wall-wide.webp", "wall-tall.webp"])
+def test_check_catches_a_deleted_wall_with_no_intake(workspace, name):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _simulate_fresh_clone(src)
+    (root / "img" / "artists" / "example-artist" / name).unlink()
+    _drop_from_manifest(root, f"example-artist/{name}")
+
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_check_catches_a_swapped_wall_with_no_intake(workspace):
+    profiles, src, root = workspace
+    write_profile(profiles)
+    generate(profiles, src, root, TODAY)
+    _simulate_fresh_clone(src)
+    target = root / "img" / "artists" / "example-artist" / "band.webp"
+    Image.new("RGB", (2400, 220), (0, 0, 0)).save(target)
+    _drop_from_manifest(root, "example-artist/band.webp")
+    data = json.loads((root / "img" / "artists" / "manifest.json").read_text())
+    entries = data.get("artefacts", data)
+    import hashlib
+    entries["example-artist/band.webp"] = {
+        "sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+        "width": 2400,
+        "height": 220,
+    }
+    (root / "img" / "artists" / "manifest.json").write_text(json.dumps(data))
+
+    assert check(profiles, src, root, TODAY) == 1
+
+
+def test_roster_image_paths_pass_the_homepage_filter():
+    """safeImg in index.html drops any roster picture outside its pattern;
+    every path _roster_image can produce from a schema-valid name must pass."""
+    from tools.profile_schema import Work
+
+    js = (ROOT / "index.html").read_text()
+    pattern = re.search(r"function safeImg\(path\) \{\s*return /(.+?)/\.test", js).group(1)
+    rx = re.compile(pattern.replace("\\/", "/"))
+    for src in ("work-01.jpg", "Mural_2022.v2.png", "a.webp"):
+        path = _roster_image(_profile(portrait=Work(src=src, alt="A portrait.")))
+        assert rx.fullmatch(path), path
+    assert rx.fullmatch(_roster_image(_profile()))

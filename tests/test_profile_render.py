@@ -454,6 +454,14 @@ def test_external_links_carry_a_hidden_arrow(tmp_path):
 
 def test_stylesheet_is_cache_busted_and_the_display_font_preloaded(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
-    assert re.search(r'href="/artists/profile\.css\?v=[0-9-]+"', html)
+    assert re.search(r'href="/artists/profile\.css\?v=[0-9a-f]{10}"', html)
     assert '<link rel="preload" href="/fonts/bonum-bold.woff2" as="font"' in html
     assert (REPO / "fonts" / "bonum-bold.woff2").exists()
+
+
+def test_stylesheet_version_is_the_stylesheets_own_hash(tmp_path):
+    import hashlib
+
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    want = hashlib.sha256((REPO / "artists" / "profile.css").read_bytes()).hexdigest()[:10]
+    assert f'href="/artists/profile.css?v={want}"' in html

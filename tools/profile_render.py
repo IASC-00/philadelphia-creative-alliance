@@ -26,11 +26,17 @@ when it did not.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import date
 from html import escape
 from pathlib import Path
 
-from tools.profile_schema import Profile, availability_is_current, discipline_by_slug
+from tools.profile_schema import (
+    Profile,
+    ProfileError,
+    availability_is_current,
+    discipline_by_slug,
+)
 
 # www is the canonical address (main, commit 7902b7f): canonical, og and badge
 # links on generated pages must name the same host index.html does.
@@ -40,9 +46,13 @@ SITE = "https://www.philadelphiacreativealliance.com"
 # account inbox confirmed 8 Nov 2026 by one test request; the relay to the member is manual.
 FORMSPREE_ID = "mbdnqlvo"
 
-# Bumped whenever artists/profile.css changes, so a returning visitor's cached
-# stylesheet can't pair the new markup with the old look.
-CSS_VERSION = "2026-11-10"
+# The stylesheet's own content hash, so a returning visitor's cached copy can't
+# pair new markup with the old look. Derived, not hand-bumped (exit-gate 10 Nov,
+# L3): a CSS edit changes every page, and `profiles.py --check` then flags the
+# pages until they are regenerated.
+CSS_VERSION = hashlib.sha256(
+    (Path(__file__).resolve().parent.parent / "artists" / "profile.css").read_bytes()
+).hexdigest()[:10]
 
 # Shown at the top of every page rendered with draft=True (tools/profiles.py
 # --preview). Drafts are for the artist to review before they agree, in
@@ -133,7 +143,7 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
     portrait_src = (
         _image_name(profile.portrait.src) if profile.portrait else "tile.webp"
     )
-    # The generated tile is decoration: the name is the heading right below it.
+    # The generated tile is decoration: the name is the page's heading, in the banner above it.
     portrait_alt = profile.portrait.alt if profile.portrait else ""
     portrait = (
         f'<img class="portrait" src="/img/artists/{_e(profile.slug)}/'
@@ -142,7 +152,7 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
     img_dir = f"/img/artists/{_e(profile.slug)}"
     hue = discipline_by_slug(profile.disciplines[0]).hue
     if hue not in HUES:
-        raise ValueError(f"{profile.slug}: no stylesheet colour for hue {hue!r}")
+        raise ProfileError(f"{profile.slug}: no stylesheet colour for hue {hue!r}")
 
     works = ""
     for work in profile.works:
