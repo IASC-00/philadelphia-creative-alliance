@@ -135,6 +135,13 @@ def _js_string(value: str) -> str:
     )
 
 
+def _roster_image(profile) -> str:
+    """The roster card's picture: the member's portrait when they sent one,
+    otherwise the generated tile tools/profile_images.py writes for them."""
+    name = Path(profile.portrait.src).stem + ".webp" if profile.portrait else "tile.webp"
+    return f"/img/artists/{profile.slug}/{name}"
+
+
 def render_config_blocks(profiles) -> dict[str, str]:
     """Render the `disciplines` and `artists` array literals for the `PCA`
     config block in index.html, from the taxonomy and the live profile list.
@@ -154,7 +161,8 @@ def render_config_blocks(profiles) -> dict[str, str]:
     artist_entries = [
         f"      {{ slug:{_js_string(p.slug)}, name:{_js_string(p.name)}, "
         f"disciplines:[{', '.join(_js_string(s) for s in p.disciplines)}], "
-        f"url:{_js_string(f'/artists/{p.slug}/')} }}"
+        f"url:{_js_string(f'/artists/{p.slug}/')}, "
+        f"img:{_js_string(_roster_image(p))} }}"
         for p in profiles
     ]
     # A genuinely empty roster (DISCIPLINES is never empty, but zero live

@@ -18,10 +18,16 @@ Hosted on GitHub Pages (`CNAME` + `.nojekyll`).
 
 ```
 index.html        the whole site
-img/              generated mosaic artwork (WebP)
+img/              generated mosaic walls (WebP)
+fonts/            display face: TeX Gyre Bonum, Latin subset (GUST Font License)
 og.png            share card
 tools/mosaic.py   generator for everything in img/ and og.png
 ```
+
+The look ("the wall", November 2026): the hero and the join section are full-bleed generated
+walls with a plaster "missing tile" panel holding the text; organizations and disciplines are
+big flat tiles in ink grout; reading sections stay on plaster. Dark mode keeps the walls and the
+plaster panels and darkens everything around them.
 
 Local preview:
 
@@ -39,11 +45,11 @@ python3 tools/mosaic.py --check    # verify assets match the manifest
 ```
 
 Requires `pillow`, `numpy`, and a serif + monospace font on disk. On Debian/Ubuntu that means
-`apt install fonts-urw-base35` (URW's Palatino clone, matching the site's serif); DejaVu and the
+`apt install fonts-urw-base35` (URW's Palatino clone, used on the share card); DejaVu and the
 macOS system fonts are used as fallbacks.
 
 Output is deterministic on a fixed toolchain — each asset is seeded from its own name, so a
-rebuild reproduces the same bytes and a given organisation type always gets the same tile texture.
+rebuild reproduces the same bytes and a given member always gets the same wall.
 That guarantee doesn't extend across numpy or Pillow versions, which is why `--check` compares
 sha256 and dimensions against the committed `img/manifest.json` rather than trusting a rebuild.
 
@@ -61,8 +67,8 @@ PCA.orgs = [
 ];
 ```
 
-`type` must match a `slug` in `PCA.orgTypes`, which also names its tile texture
-(`img/tile-<slug>.webp`). An unrecognised slug is skipped rather than rendered broken. Each
+`type` must match a `slug` in `PCA.orgTypes`, whose `t` (1-6) sets the tile colour. An
+unrecognised slug is skipped rather than rendered broken. Each
 organisation added claims its slot; kinds with no member keep showing an open invitation.
 
 `url` is filtered to `http:`/`https:` before it reaches the DOM — anything else is dropped and the
@@ -87,7 +93,10 @@ Part of the Alliance? Add the badge to your site's footer:
 Profiles are data. `profiles/<slug>.json` is the source of truth; `tools/profiles.py`
 renders `artists/<slug>/index.html`, processes imagery into `img/artists/<slug>/`, and
 rewrites the `disciplines` and `artists` blocks in `index.html` between their
-`// GENERATED` markers.
+`// GENERATED` markers. Every member also gets generated walls in their colour (their first
+discipline's hue): `wall-wide.webp` and `wall-tall.webp` for the profile banner, `band.webp`,
+and `tile.webp` for the roster card when they haven't sent a portrait. Until they send work
+photos, the profile shows empty gallery frames.
 
     python3 tools/profiles.py           # build
     python3 tools/profiles.py --check   # verify committed output is current

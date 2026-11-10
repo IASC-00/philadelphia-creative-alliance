@@ -55,10 +55,17 @@ def test_missing_source_image_is_an_error(tmp_path, src_dir):
         process_profile_images(profile, src_dir, tmp_path / "out")
 
 
+WALLS = {
+    "example-artist/wall-wide.webp",
+    "example-artist/wall-tall.webp",
+    "example-artist/band.webp",
+}
+
+
 def test_process_profile_images_falls_back_to_tile_when_no_imagery_at_all(tmp_path):
     profile = load_profile(write_profile(tmp_path, works=[], portrait=None))
     entries = process_profile_images(profile, tmp_path, tmp_path / "out")
-    assert list(entries.keys()) == ["example-artist/tile.webp"]
+    assert set(entries.keys()) == {"example-artist/tile.webp"} | WALLS
     assert (tmp_path / "out" / "example-artist" / "tile.webp").exists()
 
 
@@ -68,7 +75,7 @@ def test_works_present_but_no_portrait_still_gets_a_header_tile(tmp_path, src_di
     assert set(entries.keys()) == {
         "example-artist/work-01.webp",
         "example-artist/tile.webp",
-    }
+    } | WALLS
     assert (tmp_path / "out" / "example-artist" / "work-01.webp").exists()
     assert (tmp_path / "out" / "example-artist" / "tile.webp").exists()
 
@@ -78,6 +85,41 @@ def test_a_profile_with_a_portrait_never_gets_a_tile(tmp_path, src_dir):
     entries = process_profile_images(profile, src_dir, tmp_path / "out")
     assert "example-artist/tile.webp" not in entries
     assert not (tmp_path / "out" / "example-artist" / "tile.webp").exists()
+
+
+def test_every_profile_gets_its_banner_walls_at_their_sizes(tmp_path, src_dir):
+    # The profile banner and closing band are generated for every member,
+    # portrait or not: the page is laid out around them.
+    profile = load_profile(write_profile(tmp_path))
+    entries = process_profile_images(profile, src_dir, tmp_path / "out")
+    sizes = {k: (v["width"], v["height"]) for k, v in entries.items() if k in WALLS}
+    assert sizes == {
+        "example-artist/wall-wide.webp": (2400, 1000),
+        "example-artist/wall-tall.webp": (1100, 1500),
+        "example-artist/band.webp": (2400, 220),
+    }
+    for name in ("wall-wide", "wall-tall", "band"):
+        assert (tmp_path / "out" / "example-artist" / f"{name}.webp").exists()
+
+
+@pytest.mark.parametrize("stem", ["wall-wide", "wall-tall", "band"])
+def test_a_work_named_like_a_generated_wall_collides(tmp_path, stem):
+    works = [{"src": f"{stem}.jpg", "alt": "A piece with an unlucky name."}]
+    profile = load_profile(write_profile(tmp_path, works=works))
+    with pytest.raises(ProfileError, match=f"{stem}.webp"):
+        process_profile_images(profile, tmp_path, tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+def test_member_walls_take_the_first_discipline_hue(tmp_path):
+    # Slug held constant (the seed), so only the hue can make these differ.
+    bare = dict(works=[], portrait=None)
+    painter = load_profile(write_profile(tmp_path, disciplines=["painters"], **bare))
+    sculptor = load_profile(write_profile(tmp_path, disciplines=["sculptors"], **bare))
+    a = process_profile_images(painter, tmp_path, tmp_path / "a")
+    b = process_profile_images(sculptor, tmp_path, tmp_path / "b")
+    for key in WALLS:
+        assert a[key]["sha256"] != b[key]["sha256"]
 
 
 def test_a_work_named_tile_collides_with_the_generated_fallback(tmp_path):
@@ -109,7 +151,7 @@ def test_non_colliding_names_still_process_normally(tmp_path, src_dir):
     assert set(entries.keys()) == {
         "example-artist/work-01.webp",
         "example-artist/portrait.webp",
-    }
+    } | WALLS
 
 
 def test_transparent_source_keeps_its_alpha_channel(tmp_path):
@@ -149,7 +191,7 @@ def test_fallback_tile_is_deterministic_per_slug(tmp_path):
 
 
 def test_fallback_tile_uses_the_first_discipline_hue(tmp_path):
-    """The slug must be held constant. build_org_tile is seeded from the slug,
+    """The slug must be held constant. The member wall is seeded from the slug,
     so varying both slug and discipline (as this test used to) is satisfied by
     the slug difference alone — a hue-blind implementation passed it."""
     painter = load_profile(write_profile(tmp_path, disciplines=["painters"]))

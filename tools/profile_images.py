@@ -8,8 +8,12 @@ randomness involved is `tools.mosaic`'s own name-seeded RNG, used unchanged.
 
 Rights-cleanliness is the other half: a profile never falls back to a stock
 photo or a placeholder person. It falls back to a generated mosaic tile from
-`tools.mosaic.build_org_tile`, deterministically seeded from the artist's own
-slug — never a photograph implying a member who hasn't consented.
+`tools.mosaic.build_member_wall`, deterministically seeded from the artist's
+own slug — never a photograph implying a member who hasn't consented.
+
+Every profile also gets its generated banner walls (`wall-wide.webp`,
+`wall-tall.webp`) and closing `band.webp`, laid in the member's colour: the
+profile page is built around them whether or not the member has sent photos.
 
 The header portrait is an identity mark, so every profile gets one: a
 profile with no submitted portrait gets `tile.webp` for that slot even when
@@ -24,7 +28,7 @@ from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 
-from tools.mosaic import build_org_tile, save_asset, sha256_of
+from tools.mosaic import build_member_wall, save_asset, sha256_of
 from tools.profile_schema import Profile, ProfileError, discipline_by_slug
 
 LONG_EDGE = 1600
@@ -60,12 +64,19 @@ def fallback_tile(profile: Profile) -> Image.Image:
     """A deterministic mosaic tile for a profile's header slot when it has no
     submitted portrait.
 
-    Seeded from the artist's slug (via `build_org_tile`'s own `tile-{slug}`
-    naming) so the same profile always gets the same tile, and hued by the
-    artist's first discipline so the wall of fallback tiles isn't monochrome.
+    Seeded from the artist's slug so the same profile always gets the same
+    tile, and hued by the artist's first discipline so the roster of fallback
+    tiles isn't monochrome.
     """
-    hue = discipline_by_slug(profile.disciplines[0]).hue
-    return build_org_tile(f"artist-{profile.slug}", hue)
+    return build_member_wall(profile.slug, _hue(profile), "tile.webp")
+
+
+# Generated for every profile, in this order, after the submitted images.
+BANNER_WALLS = ("wall-wide.webp", "wall-tall.webp", "band.webp")
+
+
+def _hue(profile: Profile) -> str:
+    return discipline_by_slug(profile.disciplines[0]).hue
 
 
 def _manifest_entry(path: Path, img: Image.Image) -> dict:
@@ -86,7 +97,8 @@ def process_profile_images(
     WebP under `out_root/<slug>/`. A profile with no submitted portrait also
     gets a generated `tile.webp` for the header slot — regardless of whether
     it has works — since the header is an identity mark and an artwork is
-    not a portrait. A profile that has a portrait never gets a tile.
+    not a portrait. A profile that has a portrait never gets a tile. Every
+    profile gets the generated `BANNER_WALLS`.
 
     Every output's filename (`<stem>.webp` per work/portrait, plus `tile.webp`
     when generated) is checked for collisions with every other output before
@@ -113,6 +125,8 @@ def process_profile_images(
     ]
     if needs_tile:
         planned.append(("<generated fallback tile>", "tile.webp"))
+    for name in BANNER_WALLS:
+        planned.append((f"<generated {name}>", name))
 
     by_name: dict[str, list[str]] = {}
     for label, name in planned:
@@ -156,5 +170,11 @@ def process_profile_images(
         target = out_dir / "tile.webp"
         save_asset(tile, target)
         entries[f"{profile.slug}/{target.name}"] = _manifest_entry(target, tile)
+
+    for name in BANNER_WALLS:
+        img = build_member_wall(profile.slug, _hue(profile), name)
+        target = out_dir / name
+        save_asset(img, target)
+        entries[f"{profile.slug}/{name}"] = _manifest_entry(target, img)
 
     return entries

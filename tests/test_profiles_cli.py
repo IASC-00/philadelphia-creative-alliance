@@ -1645,3 +1645,39 @@ def test_preview_refuses_to_write_inside_a_git_work_tree(tmp_path):
 def test_the_real_repo_is_a_refused_preview_target():
     assert preview(ROOT / "profiles", ROOT / "intake", ROOT / "preview", date(2026, 7, 26)) == 2
     assert not (ROOT / "preview").exists()
+
+
+# --- roster image (look B, 10 Nov 2026) --------------------------------------
+
+
+def _profile(**over):
+    base = dict(
+        slug="direct",
+        name="Direct",
+        disciplines=("painters",),
+        tagline="t",
+        bio=(),
+        location="",
+        portrait=None,
+        works=(),
+        links=(),
+        availability=Availability(status="open", openTo=(), updated="2026-07-26"),
+        consent={},
+        joined="",
+        live=True,
+    )
+    base.update(over)
+    return Profile(**base)
+
+
+def test_roster_entry_carries_the_generated_tile_when_there_is_no_portrait():
+    blocks = render_config_blocks([_profile()])
+    assert _json_literal_for(blocks["artists"], "img") == "/img/artists/direct/tile.webp"
+
+
+def test_roster_entry_carries_the_portrait_when_there_is_one():
+    from tools.profile_schema import Work
+
+    p = _profile(portrait=Work(src="me.jpg", alt="A portrait."))
+    blocks = render_config_blocks([p])
+    assert _json_literal_for(blocks["artists"], "img") == "/img/artists/direct/me.webp"

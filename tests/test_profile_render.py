@@ -211,7 +211,17 @@ def test_header_image_matches_what_the_pipeline_writes_when_only_works_exist(tmp
     profile = load_profile(write_profile(tmp_path, portrait=None))
     entries = process_profile_images(profile, src_dir, tmp_path / "out")
     written_names = {name.split("/", 1)[1] for name in entries}
-    assert written_names == {"work-01.webp", "tile.webp"}
+    assert written_names == {
+        "work-01.webp",
+        "tile.webp",
+        "wall-wide.webp",
+        "wall-tall.webp",
+        "band.webp",
+    }
+
+    # Every generated image the page points at is one the pipeline wrote.
+    for name in re.findall(r'/img/artists/example-artist/([^"/ ]+\.webp)', render_profile(profile, TODAY)):
+        assert name in written_names, name
 
     html = render_profile(profile, TODAY)
     match = re.search(r'<img class="portrait" src="[^"]+/([^"/]+)"', html)
@@ -345,7 +355,7 @@ def test_published_page_has_no_draft_note_and_a_live_form(tmp_path):
 
 def test_draft_page_says_so_and_cannot_send(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path)), TODAY, draft=True)
-    body = html.split("<body>", 1)[1]
+    body = re.split(r"<body[^>]*>", html, maxsplit=1)[1]
     assert body.lstrip().startswith(
         '<p class="draft-note" role="note">'
         "Draft — for the artist’s review; not published</p>"
@@ -396,3 +406,54 @@ def test_links_section_is_omitted_when_there_are_no_links(tmp_path):
 def test_generated_tile_is_decorative_not_a_repeat_of_the_name(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path, portrait=None)), TODAY)
     assert re.search(r'<img class="portrait" src="[^"]*tile\.webp" alt="">', html)
+
+
+# --- look B, "The wall" (10 Nov 2026) ----------------------------------------
+
+
+def test_page_is_laid_in_the_first_discipline_colour(tmp_path):
+    html = render_profile(
+        load_profile(write_profile(tmp_path, disciplines=["photographers", "painters"])),
+        TODAY,
+    )
+    # photographers is the 6th discipline -> violet
+    assert '<body class="hue-violet">' in html
+
+
+def test_every_hue_a_discipline_can_take_has_a_stylesheet_colour():
+    from tools.profile_schema import DISCIPLINES
+
+    css = (REPO / "artists" / "profile.css").read_text()
+    for d in DISCIPLINES:
+        assert re.search(rf"\.hue-{d.hue}\s*\{{[^}}]*--artist:", css), d.hue
+
+
+def test_banner_uses_the_wide_wall_with_the_tall_one_for_phones(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert (
+        '<source media="(max-width: 760px)" '
+        'srcset="/img/artists/example-artist/wall-tall.webp">'
+    ) in html
+    assert '<img src="/img/artists/example-artist/wall-wide.webp" alt=""' in html
+    assert 'src="/img/artists/example-artist/band.webp" alt=""' in html
+
+
+def test_empty_gallery_frames_show_until_work_photos_arrive(tmp_path):
+    bare = render_profile(load_profile(write_profile(tmp_path, works=[])), TODAY)
+    assert '<div class="slots">' in bare
+    assert "Reserved for work photos" in bare
+    with_work = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert '<div class="slots">' not in with_work
+    assert "Reserved for work photos" not in with_work
+
+
+def test_external_links_carry_a_hidden_arrow(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert '<span class="arrow" aria-hidden="true">\u2197</span></a></li>' in html
+
+
+def test_stylesheet_is_cache_busted_and_the_display_font_preloaded(tmp_path):
+    html = render_profile(load_profile(write_profile(tmp_path)), TODAY)
+    assert re.search(r'href="/artists/profile\.css\?v=[0-9-]+"', html)
+    assert '<link rel="preload" href="/fonts/bonum-bold.woff2" as="font"' in html
+    assert (REPO / "fonts" / "bonum-bold.woff2").exists()

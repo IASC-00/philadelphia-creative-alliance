@@ -24,307 +24,281 @@
 <meta name="twitter:image" content="https://www.philadelphiacreativealliance.com/og.png">
 <meta name="twitter:image:alt" content="A mosaic of irregular colored tiles set in dark grout, above the words Philadelphia Creative Alliance.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='16' height='16' fill='%23EC4A2C'/%3E%3Crect x='16' width='16' height='16' fill='%232F63E6'/%3E%3Crect y='16' width='16' height='16' fill='%23F2B01E'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23DB2F86'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/bonum-bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/wall-hero-wide.webp" as="image" media="(min-width: 761px)">
+<link rel="preload" href="img/wall-hero-tall.webp" as="image" media="(max-width: 760px)">
 <style>
+  /* Look B, "The wall" (10 Nov 2026). The page is a mosaic wall going up: the
+     hero and the join section are full-bleed generated walls (tools/mosaic.py)
+     with a plaster "missing tile" cut into them; organizations and disciplines
+     are big flat tiles in ink grout; the reading sections stay on plaster. */
+  @font-face { font-family: "Bonum PCA"; src: url("fonts/bonum-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+  @font-face { font-family: "Bonum PCA"; src: url("fonts/bonum-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+
   :root {
-    /* light is the base; dark redefines the tokens below */
-    --ground:   #E9E7E0;   /* plaster / gallery wall (chosen warm-grey, not cream) */
-    --ground-2: #F3F1EB;   /* raised surface */
-    --ink:      #17131F;   /* grout — text + borders */
-    --ink-soft: #4C4656;
-    --line:     rgba(23,19,31,.16);
-    --accent:   #D63F26;   /* vermilion, deepened for light-ground contrast */
-    --accent-text: #BD3822; /* same hue, for small text on the light ground: 4.5:1+ */
-    --ok-text: #0A7058;     /* jade, deepened for small text: 4.9:1 */
-    --accent-ink: #FFFFFF;
-    --shadow:   0 18px 40px -24px rgba(23,19,31,.5);
-    --hero-art: url("img/hero-mosaic-light.webp");
-    --rule-art: url("img/divider-light.webp");
-    --bar-bg:     rgba(233,231,224,.82);  /* sticky topbar wash */
-    --scrim-open: rgba(233,231,224,.77);  /* dims an unclaimed tile's texture */
-    --line-strong: rgba(23,19,31,.32);    /* dashed edge of an unclaimed tile */
+    /* light is the base; dark redefines the page tokens below */
+    --ground:   #E9E7E0;   /* plaster: the reading ground */
+    --ground-2: #F3F1EB;   /* raised plaster: inputs, cards */
+    --text:     #17131F;
+    --text-soft:#4C4656;
+    --rule:     rgba(23,19,31,.16);
+    --grout:    #17131F;   /* the lines between tiles */
+    --accent-text: #BD3822; /* vermilion, for small text on the ground: 4.5:1+ */
+    --ok-text:  #0A7058;   /* jade, for small text: 4.9:1 */
 
-    /* mosaic tile hues — same in both themes, this is the artwork */
-    --t1:#EC4A2C;   /* vermilion */
-    --t2:#2F63E6;   /* cobalt   */
-    --t3:#F2B01E; /* marigold */
-    --t4:#12A17E;   /* jade     */
-    --t5:#DB2F86;   /* fuchsia  */
-    --t6:#7A54E0;   /* violet   */
+    /* the six tile hues: the artwork, the same in both themes */
+    --t1:#EC4A2C; --t1-lit:#FF5D3F; --t1-sh:#C13C24;   /* vermilion */
+    --t2:#2F63E6; --t2-lit:#4379FF; --t2-sh:#2650BB;   /* cobalt    */
+    --t3:#F2B01E; --t3-lit:#FFBE2F; --t3-sh:#C79019;   /* marigold  */
+    --t4:#12A17E; --t4-lit:#22C59D; --t4-sh:#0D765C;   /* jade      */
+    --t5:#DB2F86; --t5-lit:#FF46A3; --t5-sh:#B0266B;   /* fuchsia   */
+    --t6:#7A54E0; --t6-lit:#966FFF; --t6-sh:#6244B5;   /* violet    */
+    --ink:  #17131F;       /* fixed dark: labels on light tiles and buttons */
+    --plaster: #E9E7E0;    /* fixed light: the missing-tile panel */
 
-    --serif: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
-    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --mono:  ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --display: "Bonum PCA", "Bookman Old Style", "URW Bookman", Bookman, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
-    --wrap: 1180px;
-    --gutter: clamp(20px, 5vw, 64px);
+    --gap: 10px;
+    --wrap: 1240px;
+    --gutter: clamp(16px, 5vw, 64px);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ground:   #141019;
-      --ground-2: #1D1826;
-      --ink:      #F3EEE7;
-      --ink-soft: #B4AAC2;
-      --line:     rgba(243,238,231,.15);
-      --accent:   #F5573B;
-      --accent-text: #F5573B;
-      --ok-text: #12A17E;
-      --accent-ink:#1a0a06;
-      --shadow:   0 24px 54px -28px rgba(0,0,0,.75);
-      --hero-art: url("img/hero-mosaic-dark.webp");
-      --rule-art: url("img/divider-dark.webp");
-      --bar-bg:     rgba(20,16,25,.82);
-      --scrim-open: rgba(20,16,25,.77);
-      --line-strong: rgba(243,238,231,.32);
+      --ground:#141019; --ground-2:#1D1826; --text:#F3EEE7; --text-soft:#B4AAC2;
+      --rule:rgba(243,238,231,.15); --grout:#0B0910; --accent-text:#F5573B; --ok-text:#12A17E;
     }
   }
   :root[data-theme="dark"] {
-    --ground:#141019; --ground-2:#1D1826; --ink:#F3EEE7; --ink-soft:#B4AAC2;
-    --line:rgba(243,238,231,.15); --accent:#F5573B; --accent-text:#F5573B; --ok-text:#12A17E; --accent-ink:#1a0a06;
-    --shadow:0 24px 54px -28px rgba(0,0,0,.75);
-    --hero-art: url("img/hero-mosaic-dark.webp"); --rule-art: url("img/divider-dark.webp");
-    --bar-bg:rgba(20,16,25,.82); --scrim-open:rgba(20,16,25,.77); --line-strong:rgba(243,238,231,.32);
+    --ground:#141019; --ground-2:#1D1826; --text:#F3EEE7; --text-soft:#B4AAC2;
+    --rule:rgba(243,238,231,.15); --grout:#0B0910; --accent-text:#F5573B; --ok-text:#12A17E;
   }
   :root[data-theme="light"] {
-    --ground:#E9E7E0; --ground-2:#F3F1EB; --ink:#17131F; --ink-soft:#4C4656;
-    --line:rgba(23,19,31,.16); --accent:#D63F26; --accent-text:#BD3822; --ok-text:#0A7058; --accent-ink:#fff;
-    --shadow:0 18px 40px -24px rgba(23,19,31,.5);
-    --hero-art: url("img/hero-mosaic-light.webp"); --rule-art: url("img/divider-light.webp");
-    --bar-bg:rgba(233,231,224,.82); --scrim-open:rgba(233,231,224,.77); --line-strong:rgba(23,19,31,.32);
+    --ground:#E9E7E0; --ground-2:#F3F1EB; --text:#17131F; --text-soft:#4C4656;
+    --rule:rgba(23,19,31,.16); --grout:#17131F; --accent-text:#BD3822; --ok-text:#0A7058;
   }
 
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-  body {
-    margin: 0;
-    background: var(--ground);
-    color: var(--ink);
-    font-family: var(--sans);
-    font-size: 17px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    transition: background .3s ease, color .3s ease;
-  }
-  .wrap { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); }
-
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  body { margin: 0; background: var(--ground); color: var(--text); font: 17px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-wrap: break-word; }
+  img { display: block; max-width: 100%; }
   a { color: inherit; }
-  .skip { position:absolute; left:-9999px; top:0; z-index:100; background:var(--accent); color:var(--accent-ink); font-family:var(--mono); font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; padding:.6rem 1rem; border-radius:2px; text-decoration:none; }
-  .skip:focus { left:12px; top:12px; }
-  .noscript-note { background:var(--accent); color:var(--accent-ink); padding:1rem var(--gutter); font-size:.92rem; }
-  .noscript-note a { color:inherit; }
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: .72rem;
-    letter-spacing: .22em;
-    text-transform: uppercase;
-    color: var(--accent-text);
-    margin: 0 0 1.1rem;
-  }
-  h1, h2, h3 { font-family: var(--serif); font-weight: 700; text-wrap: balance; line-height: 1.05; margin: 0; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.04; margin: 0; text-wrap: balance; }
   p { max-width: 62ch; }
+  .wrap { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); }
+  :focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+  section[id] { scroll-margin-top: 72px; }
 
-  /* ---------- top bar ---------- */
-  .topbar {
-    position: sticky; top: 0; z-index: 40;
-    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    padding: .85rem var(--gutter);
-    background: var(--bar-bg);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--line);
+  .skip { position: absolute; left: -9999px; top: 0; z-index: 100; min-height: 44px; display: inline-flex; align-items: center; background: var(--t1); color: var(--ink); font: 700 .75rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: .7rem 1rem; text-decoration: none; }
+  .skip:focus { left: 12px; top: 12px; }
+  .noscript-note { background: var(--t1); color: var(--ink); padding: 1rem var(--gutter); font-size: .92rem; }
+  .noscript-note a { color: inherit; }
+
+  /* eyebrow: mono label led by one tessera in the section's hue */
+  .eyebrow { display: flex; align-items: center; gap: .65rem; font: .74rem/1.3 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--text); margin: 0 0 1.1rem; }
+  .eyebrow::before { content: ""; flex: none; width: 14px; height: 14px; background: var(--sq, var(--t1)); }
+  .sq1 { --sq: var(--t1); } .sq2 { --sq: var(--t2); } .sq3 { --sq: var(--t3); }
+  .sq4 { --sq: var(--t4); } .sq5 { --sq: var(--t5); } .sq6 { --sq: var(--t6); } .sq0 { --sq: var(--text); }
+
+  /* ---------- header: the top course of grout ---------- */
+  .top { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .6rem var(--gutter); background: var(--ground); border-bottom: 6px solid var(--grout); }
+  .brand { display: flex; align-items: center; gap: .7rem; min-height: 44px; min-width: 0; font: 700 .8rem/1.25 var(--mono); letter-spacing: .1em; text-transform: uppercase; text-decoration: none; }
+  .chips { display: inline-grid; grid-template-columns: repeat(2, 9px); grid-auto-rows: 9px; gap: 2px; flex: none; }
+  .chips i { display: block; }
+  .chips i:nth-child(1){background:var(--t1)} .chips i:nth-child(2){background:var(--t2)}
+  .chips i:nth-child(3){background:var(--t3)} .chips i:nth-child(4){background:var(--t5)}
+  .nav { display: flex; align-items: center; gap: 1.3rem; }
+  .nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; font: .74rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: var(--text); }
+  .nav a:not(.btn):hover { text-decoration: underline; text-underline-offset: .35em; text-decoration-thickness: 2px; }
+  @media (max-width: 900px) { .nav a.hide-sm { display: none; } }
+  @media (max-width: 620px) { .brand { font-size: .68rem; } .nav { gap: .8rem; } }
+
+  /* ---------- buttons: rectangles, never pills ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 48px; padding: .75rem 1.2rem; font: 700 .76rem/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; text-decoration: none; border: 2px solid var(--text); background: transparent; color: var(--text); cursor: pointer; }
+  .btn.solid { background: var(--t1); color: var(--ink); }
+  .btn:hover { background: var(--text); color: var(--ground); }
+  .nav .btn { min-height: 44px; padding: .55rem .9rem; }
+  /* An inert control has to look inert, or "Chip in" reads like a working button. */
+  .btn:disabled, .btn[aria-disabled="true"] { background: transparent; color: var(--text-soft); border-color: var(--rule); cursor: not-allowed; }
+  .btn:disabled:hover, .btn[aria-disabled="true"]:hover { background: transparent; color: var(--text-soft); }
+
+  /* ---------- the socket: a missing tile cut into the wall ---------- */
+  .socket { background: var(--ink); padding: var(--gap); }
+  /* bare plaster in both themes: a piece of the wall, not page chrome */
+  .panel {
+    --ground:#E9E7E0; --ground-2:#F3F1EB; --text:#17131F; --text-soft:#4C4656;
+    --rule:rgba(23,19,31,.16); --accent-text:#BD3822; --ok-text:#0A7058;
+    background: var(--plaster); color: var(--text);
+    padding: clamp(1.6rem, 4vw, 3.4rem);
+    /* hand-cut, not machine-square: the corners sit a few px off true */
+    clip-path: polygon(0 5px, calc(100% - 7px) 0, 100% calc(100% - 6px), 6px 100%);
   }
-  .brand { display: flex; align-items: center; gap: .6rem; font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; white-space: nowrap; min-width: 0; }
-  /* The wordmark cannot fit one line beside the nav on a phone — it needs ~230px
-     of a ~155px budget. Let it wrap to two lines instead of pushing the nav
-     off-screen. */
-  @media (max-width: 620px) {
-    .brand { white-space: normal; font-size: .7rem; line-height: 1.3; }
-    .brand .chips { flex: none; }
-  }
-  .brand .chips { display: inline-grid; grid-template-columns: repeat(2,7px); grid-auto-rows: 7px; gap: 2px; }
-  .brand .chips i { display:block; width:7px; height:7px; }
-  .brand .chips i:nth-child(1){background:var(--t1)} .brand .chips i:nth-child(2){background:var(--t2)}
-  .brand .chips i:nth-child(3){background:var(--t3)} .brand .chips i:nth-child(4){background:var(--t5)}
-  .nav { display: flex; align-items: center; gap: 1.4rem; }
-  .nav a { font-family: var(--mono); font-size: .72rem; letter-spacing:.12em; text-transform: uppercase; text-decoration: none; color: var(--ink-soft); }
-  .nav a:hover { color: var(--ink); }
-  @media (max-width: 860px){ .nav a.hide-sm{ display:none; } }
-  .btn {
-    display:inline-flex; align-items:center; gap:.5rem;
-    font-family: var(--mono); font-size:.74rem; letter-spacing:.1em; text-transform:uppercase;
-    padding:.7rem 1.15rem; border-radius: 2px; text-decoration:none;
-    border:1px solid var(--ink); background:transparent; color:var(--ink); cursor:pointer;
-    transition: transform .15s ease, background .15s ease, color .15s ease;
-  }
-  .btn:hover { transform: translateY(-2px); }
-  .btn.solid { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  /* An inert control has to look inert — otherwise "Chip in" reads identical to
-     a working button and clicking it appears to do nothing at all. */
-  .btn:disabled, .btn[aria-disabled="true"] {
-    background: transparent; color: var(--ink-soft); border-color: var(--line);
-    cursor: not-allowed; transform: none;
-  }
-  .btn:disabled:hover, .btn[aria-disabled="true"]:hover { transform: none; }
-  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, pre:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
   /* ---------- hero ---------- */
-  .hero { padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(3rem,6vw,4.5rem); position: relative; overflow: hidden; }
-  .hero-grid { display:grid; grid-template-columns: 1.12fr .88fr; gap: clamp(2rem,5vw,3.5rem); align-items:center; }
-  @media (max-width: 860px){ .hero-grid{ grid-template-columns:1fr; } }
-  .hero h1 { font-size: clamp(2.5rem, 6vw, 4.6rem); letter-spacing: -.015em; }
-  .hero .lede { font-size: 1.14rem; color: var(--ink-soft); margin: 1.6rem 0 1.4rem; max-width: 46ch; }
-  .hero .free { font-family:var(--mono); font-size:.74rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink); border-left:3px solid var(--t4); padding-left:.7rem; margin:0 0 2rem; }
-  .doors { display:flex; flex-wrap:wrap; gap:.8rem; }
-  .hire-door { font-family:var(--mono); font-size:.74rem; letter-spacing:.06em; color:var(--ink-soft); margin:1.1rem 0 0; }
-  .hire-door a { color:var(--ink); text-underline-offset:.25em; display:inline-flex; align-items:center; min-height:44px; }
-  /* generated mosaic artwork — see tools/mosaic.py */
-  .hero-art {
-    background-image: var(--hero-art);
-    background-size: cover; background-position: center;
-    aspect-ratio: 1/1; border-radius: 3px; box-shadow: var(--shadow);
+  .hero { min-height: calc(100svh - 70px); border-bottom: 6px solid var(--grout); display: grid; align-items: center; padding: clamp(48px, 9vh, 110px) 0; background: var(--ink) url("img/wall-hero-wide.webp") center / cover no-repeat; }
+  .hero .socket { width: min(780px, 58vw); margin-left: clamp(16px, 7vw, 120px); }
+  .hero h1 { font-size: clamp(2.35rem, 4.6vw, 4.25rem); letter-spacing: -.012em; }
+  .hero .lede { font-size: 1.12rem; color: var(--text-soft); margin: 1.5rem 0 1.3rem; max-width: 50ch; }
+  .free { display: flex; align-items: center; gap: .65rem; font: 700 .78rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; margin: 0 0 1.7rem; }
+  .free::before { content: ""; width: 22px; height: 22px; flex: none; background: var(--t4); }
+  .doors { display: flex; flex-wrap: wrap; gap: .7rem; }
+  .hire-door { font: .78rem/1.4 var(--mono); letter-spacing: .04em; color: var(--text-soft); margin: 1rem 0 0; }
+  .hire-door a { color: var(--text); display: inline-flex; align-items: center; min-height: 44px; text-underline-offset: .3em; text-decoration-thickness: 2px; }
+  @media (max-width: 760px) {
+    .hero { background-image: url("img/wall-hero-tall.webp"); align-items: start; padding: 30vh 16px 64px; min-height: 0; }
+    .hero .socket { width: 100%; margin: 0; }
   }
-  @media (max-width: 860px){ .hero-art{ aspect-ratio: 16/7; } }
 
-  /* ---------- generic section ---------- */
-  main section { padding: clamp(3.5rem, 7vw, 5.5rem) 0; border-top: 1px solid var(--line); }
-  .sec-head { max-width: 62ch; margin-bottom: 2.6rem; }
-  .sec-head h2 { font-size: clamp(1.9rem, 4vw, 2.9rem); letter-spacing:-.01em; }
-  .sec-head p { color: var(--ink-soft); margin-top: 1rem; font-size: 1.06rem; }
-  .rule { height: 14px; background-image: var(--rule-art); background-size: cover; background-position: center; opacity:.9; }
+  /* ---------- mosaic bands between sections ---------- */
+  .band { height: clamp(78px, 9vw, 132px); background: var(--ink) center / cover no-repeat; }
+  .band-up { background-image: url("img/band-up.webp"); }
+  .band-1 { background-image: url("img/band-1.webp"); }
+  .band-2 { background-image: url("img/band-2.webp"); }
+  .band-foot { background-image: url("img/band-foot.webp"); }
 
-  /* ---------- what it does ---------- */
-  .pillars { display:grid; grid-template-columns: 1fr 1fr; gap: clamp(1.2rem,3vw,2.4rem); }
-  @media (max-width:820px){ .pillars{ grid-template-columns:1fr; } }
-  .pillar { border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:3px; padding: clamp(1.4rem,3vw,2rem); background: var(--ground-2); }
-  .pillar h3 { font-size:1.45rem; margin-bottom:.7rem; }
-  .pillar p { color:var(--ink-soft); margin:0; }
-  .pillar ul { margin:.9rem 0 0; padding-left:1.05rem; color:var(--ink-soft); font-size:.97rem; }
-  .pillar li { margin:.35rem 0; }
+  /* ---------- reading sections on plaster ---------- */
+  main > section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
+  main > section.flush-bottom { padding-bottom: 0; }
+  main > section.flush-top { padding-top: 0; }
+  .sec-head { max-width: 46rem; margin-bottom: clamp(2rem, 4vw, 3rem); }
+  .sec-head h2 { font-size: clamp(2.1rem, 4.4vw, 3.6rem); letter-spacing: -.01em; }
+  .sec-head p:not(.eyebrow) { color: var(--text-soft); font-size: 1.08rem; margin: 1.1rem 0 0; }
+  .soft { color: var(--text-soft); }
 
-  /* ---------- the org wall ---------- */
-  .mosaic-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 12px; }
-  .tile {
-    position:relative; overflow:hidden; border-radius: 3px; padding: 1.4rem 1.3rem 1.5rem; min-height: 200px;
-    display:flex; flex-direction:column; text-decoration:none; color:#fff;
-    /* dark floor, not --ground-2: if the WebP fails to decode (Safari <14) the
-       tile's white text would otherwise sit on a near-white surface */
-    background-color: #241C2E; background-size: cover; background-position:center;
-    transition: transform .18s ease, box-shadow .18s ease;
-    isolation:isolate;
-  }
-  /* scrim guarantees text contrast over the generated texture */
-  .tile::before {
-    content:""; position:absolute; inset:0; z-index:-1;
-    /* Top stop was .20; white text on the marigold texture measured 3.87 there,
-       under AA. Raised until the lightest tile clears 4.5. */
-    background: linear-gradient(165deg, rgba(12,9,16,.52) 0%, rgba(12,9,16,.70) 62%, rgba(12,9,16,.86) 100%);
-  }
-  .tile:hover { transform: translateY(-4px) rotate(-.5deg); box-shadow: var(--shadow); }
-  .tile .k { font-family: var(--mono); font-size:.66rem; letter-spacing:.16em; text-transform:uppercase; opacity:.9; }
-  .tile h3 { font-size: 1.4rem; margin-top:.5rem; }
-  .tile .role { margin-top:auto; font-size:.9rem; opacity:.93; padding-top:.8rem; }
-  .tile .arrow { position:absolute; top:1.2rem; right:1.2rem; font-size:1rem; }
-  /* Unclaimed slot: its own texture, dimmed but still carrying its hue — the
-     wall is unfinished, not blank. (Do not reach for background-blend-mode:
-     luminosity here; it desaturates every slot to the same grey.) */
-  .tile.open { color: var(--ink); border:1.5px dashed var(--line-strong); }
-  .tile.open::before { background: var(--scrim-open); }
-  /* ink, not accent: vermilion-on-vermilion fails contrast on the red-hued
-     slots, and this label has to hold up on all nine tints */
-  .tile.open .k { color: var(--ink); opacity:.78; }
-  .tile.open .role { opacity:.72; }
-  .tile.open:hover { border-color: var(--accent); }
+  /* a flat tile: one big tessera with the generator's bevel */
+  .tile { border: 5px solid; border-color: var(--lit) var(--sh) var(--sh) var(--lit); background: var(--bg); color: var(--fg); }
+  .h1t { --bg:var(--t1); --lit:var(--t1-lit); --sh:var(--t1-sh); --fg:var(--ink); }
+  .h2t { --bg:var(--t2); --lit:var(--t2-lit); --sh:var(--t2-sh); --fg:#FFFFFF; }
+  .h3t { --bg:var(--t3); --lit:var(--t3-lit); --sh:var(--t3-sh); --fg:var(--ink); }
+  .h4t { --bg:var(--t4); --lit:var(--t4-lit); --sh:var(--t4-sh); --fg:var(--ink); }
+  /* fuchsia's deeper shade: white on #DB2F86 is 4.41, under AA for small text; on #C42677 it is 5.40 */
+  .h5t { --bg:#C42677; --lit:var(--t5-lit); --sh:var(--t5-sh); --fg:#FFFFFF; }
+  .h6t { --bg:var(--t6); --lit:var(--t6-lit); --sh:var(--t6-sh); --fg:#FFFFFF; }
+  a.tile:focus-visible { outline: 4px solid var(--fg); outline-offset: -12px; }
 
-  /* ---------- artist chips ---------- */
-  .chipgrid { display:flex; flex-wrap:wrap; gap:.55rem; }
-  .chipgrid a {
-    font-family:var(--mono); font-size:.75rem; letter-spacing:.06em;
-    padding:.55rem .85rem; border:1px solid var(--line); border-radius:2px;
-    text-decoration:none; color:var(--ink-soft); background:var(--ground-2);
-    transition: border-color .15s ease, color .15s ease, transform .15s ease;
-  }
-  .chipgrid a:hover { border-color:var(--accent); color:var(--ink); transform:translateY(-2px); }
-  .chipgrid a .dot { display:inline-block; width:7px; height:7px; margin-right:.45rem; vertical-align:middle; }
-  .roster { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; margin-top:1.6rem; }
-  .roster a { border:1px solid var(--line); border-radius:3px; padding:.9rem 1rem; text-decoration:none; background:var(--ground-2); display:flex; flex-direction:column; gap:.2rem; }
-  .roster a:hover { border-color:var(--accent); }
-  .roster .n { font-family:var(--serif); font-size:1.1rem; font-weight:700; }
-  .roster .d { font-family:var(--mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
+  /* ---------- what it's for ---------- */
+  .pillars { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem, 4vw, 3rem); }
+  @media (max-width: 820px) { .pillars { grid-template-columns: 1fr; } }
+  .pillar .cap { font-size: clamp(2.4rem, 5vw, 3.6rem); min-height: clamp(120px, 13vw, 170px); display: flex; align-items: flex-end; padding: 1.2rem 1.4rem; }
+  .pillar p { margin: 1.4rem 0 0; font-size: 1.06rem; }
+  .pillar ul { list-style: none; margin: 1rem 0 0; padding: 0; color: var(--text-soft); }
+  .pillar li { display: flex; gap: .8rem; padding: .55rem 0; border-top: 2px solid var(--rule); }
+  .pillar li::before { content: ""; flex: none; width: 10px; height: 10px; margin-top: .55em; background: var(--dot); }
+  .dot2 { --dot: var(--t2); } .dot3 { --dot: var(--t3); }
 
-  /* ---------- operators strip ---------- */
-  .founders { display:grid; grid-template-columns: repeat(2,1fr); gap:14px; max-width:46rem; }
-  @media (max-width:560px){ .founders{ grid-template-columns:1fr; } }
-  .studio {
-    border:1px solid var(--line); border-radius:3px; padding:1.4rem 1.4rem 1.5rem;
-    background: var(--ground-2); text-decoration:none; color:inherit;
-    display:flex; flex-direction:column; gap:.5rem; transition: border-color .15s ease, transform .15s ease;
-  }
-  .studio:hover { border-color: var(--accent); transform: translateY(-3px); }
-  .studio .k { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); }
-  .studio h3 { font-size:1.25rem; }
-  .studio .link { font-family:var(--mono); font-size:.74rem; color:var(--accent-text); margin-top:.4rem; }
+  /* ---------- the organization wall: full-bleed grout grid ---------- */
+  .orgwall { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); padding: var(--gap); background: var(--grout); list-style: none; margin: 0; }
+  .orgwall li { display: flex; }
+  .otile { flex: 1; min-height: clamp(250px, 23vw, 330px); display: flex; flex-direction: column; justify-content: space-between; gap: 1.4rem; padding: clamp(1.1rem, 2vw, 1.6rem); text-decoration: none; }
+  .otile h3 { font-size: clamp(1.75rem, 2.7vw, 2.5rem); max-width: 12ch; }
+  .plate { position: relative; display: block; background: var(--plaster); color: var(--ink); border: 3px solid var(--ink); padding: .8rem 3.2rem .85rem .95rem; }
+  .plate .k { display: block; font: 700 .7rem/1.3 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+  .plate .role { display: block; font-size: .95rem; line-height: 1.45; margin-top: .3rem; }
+  .plate .arrow { position: absolute; top: .55rem; right: .8rem; font-size: 1.15rem; }
+  .otile:hover .plate { background: var(--ink); color: var(--plaster); }
+  @media (max-width: 980px) { .orgwall { grid-template-columns: 1fr 1fr; } .orgwall li:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+  @media (max-width: 600px) { .orgwall { grid-template-columns: 1fr; --gap: 8px; } .otile { min-height: 0; gap: 1.8rem; } }
 
-  /* ---------- join ---------- */
-  .split { display:grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem,4vw,3.5rem); align-items:start; }
-  @media (max-width:820px){ .split{ grid-template-columns:1fr; } }
-  .tabs { display:flex; gap:.4rem; margin-bottom:1.4rem; border-bottom:1px solid var(--line); }
-  .tabs button {
-    font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
-    padding:.75rem 1rem; background:transparent; border:0; border-bottom:2px solid transparent;
-    color:var(--ink-soft); cursor:pointer; margin-bottom:-1px;
+  /* ---------- artists ---------- */
+  .disc { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; background: var(--grout); list-style: none; margin: 0; }
+  .disc li { flex: 1 1 auto; display: flex; }
+  /* 19.2px bold = WCAG large text */
+  .disc a { flex: 1; min-height: 96px; display: flex; align-items: flex-end; padding: .8rem 1rem; font: 700 1.2rem/1.15 var(--sans); text-decoration: none; }
+  .disc a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
+  @media (max-width: 600px) { .disc li { flex: 1 1 calc(50% - 8px); } .disc a { min-height: 84px; } }
+  .roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--gap); padding: var(--gap); background: var(--grout); list-style: none; margin: var(--gap) 0 0; }
+  .roster:empty { display: none; }
+  .roster li { display: flex; }
+  .acard { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
+  .acard img { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+  .acard .who { display: flex; flex-direction: column; gap: .35rem; padding: 1.1rem 1.3rem 1.3rem; }
+  .acard .n { font: 700 clamp(1.7rem, 3vw, 2.4rem)/1.05 var(--display); }
+  .acard .d { font: 700 .76rem/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+  .acard:hover .n { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: .15em; }
+  .after { margin: 2rem 0 0; }
+
+  /* ---------- two-column sections ---------- */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: start; }
+  @media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+  .split h2 { font-size: clamp(2.1rem, 4.4vw, 3.4rem); }
+  .note { font: .82rem/1.55 var(--mono); color: var(--text-soft); }
+  .why .split p { font-size: 1.1rem; margin: 0; }
+  .why strong { color: var(--text); }
+
+  /* ---------- forms ---------- */
+  form { display: grid; gap: 1rem; }
+  label { display: block; font: .72rem/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-soft); margin-bottom: .4rem; }
+  input, select, textarea { width: 100%; min-height: 48px; padding: .75rem .9rem; font: inherit; font-size: 1rem; background: var(--ground-2); color: var(--text); border: 2px solid var(--text-soft); border-radius: 0; }
+  textarea { min-height: 110px; resize: vertical; }
+  ::placeholder { color: var(--text-soft); opacity: .85; }
+  .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+  .form-frame { border-top: 10px solid var(--t1); padding-top: 1.6rem; }
+  .form-ok { font: .82rem/1.5 var(--mono); color: var(--ok-text); margin: 0; }
+  .form-err { font: .82rem/1.5 var(--mono); color: var(--accent-text); margin: 0; }
+  .hp { position: absolute; left: -9999px; }
+  form .btn { justify-self: start; }
+
+  /* ---------- who runs it: the operators are the grout ---------- */
+  .founders { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); max-width: 56rem; }
+  @media (max-width: 600px) { .founders { grid-template-columns: 1fr; } }
+  .studio { display: flex; flex-direction: column; gap: .6rem; padding: 1.6rem 1.6rem 1.7rem; min-height: 230px; background: var(--ink); color: #F3EEE7; text-decoration: none; border: 2px solid var(--rule); }
+  .studio .k { font: .72rem/1.3 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--t3); }
+  .studio h3 { font-size: clamp(1.5rem, 2.4vw, 1.9rem); }
+  .studio .link { margin-top: auto; font: .8rem/1.4 var(--mono); color: var(--t3); }
+  .studio:hover .link { text-decoration: underline; text-underline-offset: .3em; }
+  .studio:focus-visible { outline: 3px solid var(--t3); outline-offset: -9px; }
+
+  /* ---------- claim a tile: the hero's socket, mirrored, holding the join forms ---------- */
+  .claim { display: grid; justify-items: end; padding: clamp(72px, 10vw, 140px) 0; background: var(--ink) url("img/wall-join-wide.webp") center / cover no-repeat; border-block: 6px solid var(--grout); }
+  .claim .socket { width: min(820px, 62vw); margin-right: clamp(16px, 7vw, 120px); }
+  .claim h2 { font-size: clamp(2.1rem, 4vw, 3.3rem); }
+  .claim .panel > p:not(.eyebrow) { color: var(--text-soft); margin: 1.1rem 0 0; }
+  .tabs { display: flex; gap: .4rem; margin: 1.8rem 0 1.4rem; border-bottom: 2px solid var(--rule); }
+  .tabs button { min-height: 48px; font: 700 .74rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: .75rem 1rem; background: transparent; border: 0; border-bottom: 4px solid transparent; color: var(--text-soft); cursor: pointer; margin-bottom: -2px; }
+  .tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--t1); }
+  .tabs button:hover { color: var(--text); }
+  @media (max-width: 760px) {
+    .claim { background-image: url("img/wall-join-tall.webp"); padding: 18vh 16px; justify-items: stretch; }
+    .claim .socket { width: 100%; margin: 0; }
   }
-  .tabs button[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--accent); }
-  .tabs button:hover { color:var(--ink); }
-  form { display:flex; flex-direction:column; gap:.9rem; max-width:none; }
-  label { font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom:.35rem; }
-  input, select, textarea {
-    width:100%; padding:.8rem .9rem; font: inherit; font-size:.95rem;
-    background: var(--ground-2); color:var(--ink);
-    border:1px solid var(--line); border-radius:2px;
-  }
-  textarea { min-height:84px; resize:vertical; }
-  .form-ok { font-family:var(--mono); font-size:.82rem; color:var(--ok-text); padding-top:.4rem; }
-  .form-err { font-family:var(--mono); font-size:.82rem; color:var(--accent-text); padding-top:.4rem; }
-  .hp { position:absolute; left:-9999px; }
-  .support-card { border:1px solid var(--line); border-radius:3px; padding: clamp(1.6rem,4vw,2.4rem); background: var(--ground-2); }
-  .support-card h3 { font-size:1.6rem; margin-bottom:.8rem; }
-  .amount-row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1.2rem 0; }
-  .amount { font-family:var(--mono); font-size:.8rem; padding:.55rem .9rem; border:1px solid var(--line); border-radius:2px; cursor:pointer; background:transparent; color:var(--ink); }
-  .amount:hover, .amount[aria-pressed="true"]{ border-color:var(--accent); color:var(--accent); }
-  .amount:disabled { cursor:not-allowed; border-color:var(--line); color:var(--ink-soft); }
-  .note { font-size:.82rem; color:var(--ink-soft); font-family:var(--mono); letter-spacing:.02em; }
-  .ways { list-style:none; padding:0; margin:1.2rem 0 0; }
-  .ways li { border-top:1px solid var(--line); padding:.7rem 0; font-size:.95rem; color:var(--ink-soft); }
-  .ways b { color:var(--ink); font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; display:block; }
+
+  /* ---------- support ---------- */
+  .support-card { background: var(--ground-2); border-top: 10px solid var(--t4); padding: clamp(1.6rem, 4vw, 2.4rem); }
+  .support-card h3 { font-size: 1.6rem; }
+  .ways { list-style: none; padding: 0; margin: 1.2rem 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ways li { background: var(--ground); padding: .9rem 1rem 1rem; font-size: .95rem; color: var(--text-soft); border-top: 8px solid var(--c); }
+  .ways b { display: block; color: var(--text); font: 700 .74rem/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .2rem; }
+  .c1 { --c: var(--t1); } .c2 { --c: var(--t2); } .c3 { --c: var(--t3); } .c4 { --c: var(--t4); }
+  @media (max-width: 420px) { .ways { grid-template-columns: 1fr; } }
+  .amount-row { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1.4rem 0 1rem; }
+  .amount { min-height: 44px; min-width: 56px; font: 700 .8rem/1 var(--mono); padding: .55rem .9rem; border: 2px solid var(--text); cursor: pointer; background: transparent; color: var(--text); }
+  .amount[aria-pressed="true"] { background: var(--text); color: var(--ground); }
+  .amount:disabled { cursor: not-allowed; border-color: var(--rule); color: var(--text-soft); background: transparent; }
+  #donate { width: 100%; }
 
   /* ---------- badge ---------- */
-  .badge-demo { display:flex; align-items:center; gap:.6rem; padding:.6rem .85rem; border:1px solid var(--line); border-radius:3px; background:var(--ground-2); width:max-content; text-decoration:none; color:inherit; }
-  .badge-demo .chips { display:inline-grid; grid-template-columns:repeat(3,8px); grid-auto-rows:8px; gap:2px; }
-  .badge-demo .chips i{ display:block; width:8px; height:8px; }
-  .badge-demo .chips i:nth-child(1){background:var(--t1)}.badge-demo .chips i:nth-child(2){background:var(--t3)}
-  .badge-demo .chips i:nth-child(3){background:var(--t2)}.badge-demo .chips i:nth-child(4){background:var(--t5)}
-  .badge-demo .chips i:nth-child(5){background:var(--t4)}.badge-demo .chips i:nth-child(6){background:var(--t6)}
-  .badge-demo b { font-family:var(--mono); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; }
-  pre { overflow-x:auto; max-width:100%; background: var(--ink); color: var(--ground); padding:1rem 1.1rem; border-radius:3px; font-family:var(--mono); font-size:.78rem; line-height:1.5; margin-top:1.1rem; }
+  /* The demo must look like what the embed code below renders (the note says so),
+     so it keeps the embed's own measurements rather than the wall's. */
+  .badge-demo { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; padding: .6rem .85rem; border: 1px solid var(--rule); border-radius: 3px; text-decoration: none; color: inherit; }
+  .badge-demo .bchips { display: inline-grid; grid-template-columns: repeat(3, 8px); grid-auto-rows: 8px; gap: 2px; }
+  .badge-demo .bchips i { display: block; width: 8px; height: 8px; }
+  .badge-demo .bchips i:nth-child(1){background:var(--t1)} .badge-demo .bchips i:nth-child(2){background:var(--t3)} .badge-demo .bchips i:nth-child(3){background:var(--t2)}
+  .badge-demo .bchips i:nth-child(4){background:var(--t5)} .badge-demo .bchips i:nth-child(5){background:var(--t4)} .badge-demo .bchips i:nth-child(6){background:var(--t6)}
+  .badge-demo b { font: 700 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  pre { overflow-x: auto; max-width: 100%; background: var(--ink); color: #F3EEE7; padding: 1rem 1.1rem; font: .78rem/1.5 var(--mono); margin: 1.1rem 0 0; }
+  pre:focus-visible { outline: 3px solid var(--t3); }
   /* long URLs in inline code must wrap, or they push the page sideways on a phone */
-  code { font-family:var(--mono); font-size:.82em; overflow-wrap:anywhere; word-break:break-word; }
+  code { font-family: var(--mono); font-size: .82em; overflow-wrap: anywhere; word-break: break-word; }
 
   /* ---------- footer ---------- */
-  footer { border-top:1px solid var(--line); padding: 3rem 0 4rem; }
-  .foot { display:flex; justify-content:space-between; gap:1.5rem; flex-wrap:wrap; align-items:flex-end; }
-  .foot .k { font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
-  .foot h3 { font-size:1.35rem; max-width:30ch; }
-  .draft-tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-text); border:1px solid var(--accent-text); border-radius:2px; padding:.3rem .55rem; }
-
-  /* ---------- 44px touch targets on phones and tablets ---------- */
-  @media (max-width: 1024px) {
-    .skip { min-height:44px; display:inline-flex; align-items:center; }
-    .brand { min-height:44px; }
-    .nav a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; }
-    .btn, .tabs button, .amount { min-height:44px; }
-    .amount { min-width:44px; }
-    .chipgrid a { display:inline-flex; align-items:center; min-height:44px; }
-    .badge-demo { min-height:44px; }
-  }
+  footer { padding: 3rem 0 4rem; }
+  .foot { display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; align-items: flex-end; }
+  .foot .k { font: .74rem/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-soft); margin: 0 0 .6rem; }
+  .foot h3 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); max-width: 26ch; }
+  .foot .k.end { margin: .9rem 0 0; }
+  .draft-tag { font: 700 .7rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; border: 2px solid var(--text); padding: .55rem .7rem; }
 </style>
 </head>
 <body>
@@ -339,9 +313,9 @@
   </div>
 </noscript>
 
-<header class="topbar">
+<header class="top">
   <a class="brand" href="#top">
-    <span class="chips"><i></i><i></i><i></i><i></i></span>
+    <span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     <span>Philadelphia Creative Alliance</span>
   </a>
   <nav class="nav" aria-label="Primary">
@@ -356,9 +330,9 @@
 
 <main id="top">
   <section class="hero" aria-labelledby="hero-h">
-    <div class="wrap hero-grid">
-      <div>
-        <p class="eyebrow">Greater Philadelphia · Creative organizations</p>
+    <div class="socket">
+      <div class="panel">
+        <p class="eyebrow sq1">Greater Philadelphia · Creative organizations</p>
         <h1 id="hero-h">One alliance behind the region's creative organizations.</h1>
         <p class="lede">Music nonprofits, galleries, theater companies, film collectives, community arts spaces. Most of them running their own websites, their own promotion, their own tooling — alone. The Alliance is the shared layer underneath.</p>
         <p class="free">Artists join free. Always.</p>
@@ -368,22 +342,19 @@
         </div>
         <p class="hire-door">Hiring? <a href="#hire">Find a creative <span aria-hidden="true">→</span></a></p>
       </div>
-      <div class="hero-art" role="img" aria-label="Generated mosaic artwork: irregular colored tesserae set in dark grout, with gaps where tiles have not yet been laid."></div>
     </div>
   </section>
-
-  <div class="rule" aria-hidden="true"></div>
 
   <section id="what" aria-labelledby="what-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">What it's for</p>
+        <p class="eyebrow sq2">What it's for</p>
         <h2 id="what-h">Connect the organizations. Support the work.</h2>
         <p>The Alliance is forming now, so read this as what it's being built to do rather than what it already does. Two halves, and the second is the one nobody else is covering.</p>
       </div>
       <div class="pillars">
-        <div class="pillar">
-          <h3>Connect</h3>
+        <div class="pillar dot2">
+          <h3 class="cap tile h2t">Connect</h3>
           <p>One front door for the region's creative organizations, so the scene is legible from outside it.</p>
           <ul>
             <li>A wall clients and funders can browse by kind of organization</li>
@@ -391,8 +362,8 @@
             <li>A shared audience each member can reach</li>
           </ul>
         </div>
-        <div class="pillar">
-          <h3>Support</h3>
+        <div class="pillar dot3">
+          <h3 class="cap tile h3t">Support</h3>
           <p>Shared working infrastructure, so a two-person nonprofit isn't building alone what everyone else on this wall also needs.</p>
           <ul>
             <li>Web presence and the upkeep that follows it</li>
@@ -404,46 +375,50 @@
     </div>
   </section>
 
-  <section id="organisations" aria-labelledby="orgs-h">
+  <div class="band band-up" aria-hidden="true"></div>
+
+  <section id="organisations" class="flush-bottom" aria-labelledby="orgs-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">Member organizations</p>
+        <p class="eyebrow sq4">Member organizations</p>
         <h2 id="orgs-h">The wall is going up.</h2>
         <p>Every tile is an organization. Nine kinds, every one of them open — and we're setting the first tiles now. If one of these is yours, claim it.</p>
       </div>
-      <div class="mosaic-grid" id="orgwall"></div>
     </div>
+    <ul class="orgwall" id="orgwall"></ul>
   </section>
 
   <section id="artists" aria-labelledby="artists-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">Artists</p>
+        <p class="eyebrow sq5">Artists</p>
         <h2 id="artists-h">Artists join free. Always.</h2>
         <p>You don't need an organization behind you. Individual makers of every discipline are welcome on the wall, at no cost, with a link back to your own site and a badge to carry. Free is not an introductory rate — artist membership stays free.</p>
       </div>
-      <div class="chipgrid" id="disciplines"></div>
-      <div class="roster" id="roster"></div>
-      <p style="margin-top:2rem;"><a class="btn solid" href="#join-artist">Join as an artist — free</a></p>
+      <ul class="disc" id="disciplines"></ul>
+      <ul class="roster" id="roster"></ul>
+      <p class="after"><a class="btn solid" href="#join-artist">Join as an artist — free</a></p>
     </div>
   </section>
 
-  <div class="rule" aria-hidden="true"></div>
+  <div class="band band-1" aria-hidden="true"></div>
 
   <section id="hire" aria-labelledby="hire-h">
     <div class="wrap split">
       <div>
-        <p class="eyebrow">Hire from the wall</p>
-        <h2 id="hire-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Looking for a creative?</h2>
-        <p style="color:var(--ink-soft); margin-top:1rem;">Tell us what you need: a muralist for a wall, a band for a night, a photographer for a launch, a designer for a poster. We read every request and come back to you ourselves with members who fit.</p>
-        <p style="color:var(--ink-soft);">The wall is still filling in. If no member fits yet, we'll tell you that straight.</p>
+        <p class="eyebrow sq1">Hire from the wall</p>
+        <h2 id="hire-h">Looking for a creative?</h2>
+        <p class="soft" style="margin-top:1.1rem">Tell us what you need: a muralist for a wall, a band for a night, a photographer for a launch, a designer for a poster. We read every request and come back to you ourselves with members who fit.</p>
+        <p class="soft">The wall is still filling in. If no member fits yet, we'll tell you that straight.</p>
         <p class="note">Free to ask. Members set their own rates and work with you directly. The Alliance takes no cut.</p>
       </div>
-      <div>
+      <div class="form-frame">
         <form id="hireform" novalidate>
           <input type="hidden" name="type" value="request">
-          <div><label for="hn">Your name or organization</label><input id="hn" name="name" autocomplete="name" required></div>
-          <div><label for="he">Email</label><input id="he" type="email" name="email" autocomplete="email" required></div>
+          <div class="row">
+            <div><label for="hn">Your name or organization</label><input id="hn" name="name" autocomplete="name" required></div>
+            <div><label for="he">Email</label><input id="he" type="email" name="email" autocomplete="email" required></div>
+          </div>
           <div><label for="hd">What kind of creative?</label>
             <select id="hd" name="discipline"></select>
           </div>
@@ -461,23 +436,25 @@
     </div>
   </section>
 
-  <section id="why" aria-labelledby="why-h">
+  <div class="band band-2" aria-hidden="true"></div>
+
+  <section id="why" class="why" aria-labelledby="why-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">Why an alliance</p>
+        <p class="eyebrow sq6">Why an alliance</p>
         <h2 id="why-h">The talent isn't missing. The connections are.</h2>
       </div>
       <div class="split">
-        <p style="font-size:1.1rem;">Greater Philadelphia has no shortage of creative organizations. What it lacks is anything joining them up. Each one carries its own website, its own mailing list, its own promotion — usually on one overworked person — and a funder or client trying to understand the scene has no single place to look. Meanwhile the organization three neighborhoods over is solving the exact same problem from scratch.</p>
-        <p style="color:var(--ink-soft)">There is already a body that represents the sector, convenes it, and moves grant money through it. That isn't this. <strong style="color:var(--ink)">We don't lobby. We build.</strong> The Alliance is the working layer: a shared front door, referrals between members, and infrastructure that member organizations can actually pick up and use. No cut of anyone's work, no gatekeeping, and free for artists permanently.</p>
+        <p>Greater Philadelphia has no shortage of creative organizations. What it lacks is anything joining them up. Each one carries its own website, its own mailing list, its own promotion — usually on one overworked person — and a funder or client trying to understand the scene has no single place to look. Meanwhile the organization three neighborhoods over is solving the exact same problem from scratch.</p>
+        <p class="soft">There is already a body that represents the sector, convenes it, and moves grant money through it. That isn't this. <strong>We don't lobby. We build.</strong> The Alliance is the working layer: a shared front door, referrals between members, and infrastructure that member organizations can actually pick up and use. No cut of anyone's work, no gatekeeping, and free for artists permanently.</p>
       </div>
     </div>
   </section>
 
-  <section id="behind" aria-labelledby="behind-h">
+  <section id="behind" class="flush-top" aria-labelledby="behind-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">Who runs it</p>
+        <p class="eyebrow sq0">Who runs it</p>
         <h2 id="behind-h">Kept up by working studios.</h2>
         <p>The Alliance runs through Gemini Strategic Consultants, a Philadelphia firm. Our studios do the building. Both are operators, not members. They keep the wall up so member organizations don't have to.</p>
       </div>
@@ -498,15 +475,14 @@
     </div>
   </section>
 
-  <section id="join" aria-labelledby="join-h">
-    <div class="wrap split">
-      <div>
-        <p class="eyebrow">Claim a tile</p>
-        <h2 id="join-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Put your organization on the wall.</h2>
-        <p style="color:var(--ink-soft); margin-top:1rem;">Tell us who you are and what you do. We read every application, then come back to you about what the Alliance can carry for you and what you'd want from it.</p>
-        <p style="color:var(--ink-soft);">Individual artists use the second tab — that route is free and always will be.</p>
-      </div>
-      <div>
+  <section id="join" class="claim" aria-labelledby="join-h">
+    <div class="socket">
+      <div class="panel">
+        <p class="eyebrow sq3">Claim a tile</p>
+        <h2 id="join-h">Put your organization on the wall.</h2>
+        <p>Tell us who you are and what you do. We read every application, then come back to you about what the Alliance can carry for you and what you'd want from it.</p>
+        <p>Individual artists use the second tab — that route is free and always will be.</p>
+
         <div class="tabs" role="tablist" aria-label="Membership type">
           <button type="button" role="tab" id="tab-org" aria-controls="panel-org" aria-selected="true">Organization</button>
           <button type="button" role="tab" id="tab-artist" aria-controls="panel-artist" aria-selected="false" tabindex="-1">Artist — free</button>
@@ -515,12 +491,16 @@
         <div id="panel-org" role="tabpanel" aria-labelledby="tab-org">
           <form id="orgform" novalidate>
             <input type="hidden" name="type" value="organisation">
-            <div><label for="on">Organization name</label><input id="on" name="organisation" autocomplete="organization" required></div>
-            <div><label for="ok">Kind of organization</label>
-              <select id="ok" name="kind"></select>
+            <div class="row">
+              <div><label for="on">Organization name</label><input id="on" name="organisation" autocomplete="organization" required></div>
+              <div><label for="ok">Kind of organization</label>
+                <select id="ok" name="kind"></select>
+              </div>
             </div>
-            <div><label for="oc">Contact name &amp; role</label><input id="oc" name="contact" autocomplete="name" required></div>
-            <div><label for="oe">Email</label><input id="oe" type="email" name="email" autocomplete="email" required></div>
+            <div class="row">
+              <div><label for="oc">Contact name &amp; role</label><input id="oc" name="contact" autocomplete="name" required></div>
+              <div><label for="oe">Email</label><input id="oe" type="email" name="email" autocomplete="email" required></div>
+            </div>
             <div><label for="ow">Website</label><input id="ow" name="site" placeholder="https://" autocomplete="url"></div>
             <div><label for="od">What would you want from the Alliance?</label><textarea id="od" name="needs"></textarea></div>
             <input type="hidden" name="_subject" value="PCA — organisation application">
@@ -534,8 +514,10 @@
         <div id="panel-artist" role="tabpanel" aria-labelledby="tab-artist" hidden>
           <form id="artistform" novalidate>
             <input type="hidden" name="type" value="artist">
-            <div><label for="an">Name / studio</label><input id="an" name="name" autocomplete="name" required></div>
-            <div><label for="ae">Email</label><input id="ae" type="email" name="email" autocomplete="email" required></div>
+            <div class="row">
+              <div><label for="an">Name / studio</label><input id="an" name="name" autocomplete="name" required></div>
+              <div><label for="ae">Email</label><input id="ae" type="email" name="email" autocomplete="email" required></div>
+            </div>
             <div><label for="aw">Website or portfolio</label><input id="aw" name="site" placeholder="https://" autocomplete="url"></div>
             <div><label for="ad">Discipline</label>
               <select id="ad" name="discipline"></select>
@@ -554,18 +536,18 @@
   <section id="support" aria-labelledby="support-h">
     <div class="wrap split">
       <div>
-        <p class="eyebrow">Keep it free</p>
-        <h2 id="support-h" style="font-size:clamp(1.9rem,4vw,2.7rem);">Back the wall.</h2>
-        <p style="color:var(--ink-soft); margin-top:1rem;">Artist membership is free and stays free. Keeping it that way costs something — hosting, printing badges and stickers, and the time that goes into the wall.</p>
-        <p style="color:var(--ink-soft);">Money is the obvious way to help. It isn't the only one, and right now it isn't even the most useful one.</p>
+        <p class="eyebrow sq4">Keep it free</p>
+        <h2 id="support-h">Back the wall.</h2>
+        <p class="soft" style="margin-top:1.1rem">Artist membership is free and stays free. Keeping it that way costs something — hosting, printing badges and stickers, and the time that goes into the wall.</p>
+        <p class="soft">Money is the obvious way to help. It isn't the only one, and right now it isn't even the most useful one.</p>
       </div>
       <div class="support-card">
         <h3>Ways to help</h3>
         <ul class="ways">
-          <li><b>Space</b> A room for a meet-up, a wall, a window.</li>
-          <li><b>Print</b> Badges, stickers, and signage at cost.</li>
-          <li><b>Referrals</b> Introduce an organization that should be on the wall.</li>
-          <li><b>Money</b> Covers hosting and materials.</li>
+          <li class="c1"><b>Space</b> A room for a meet-up, a wall, a window.</li>
+          <li class="c2"><b>Print</b> Badges, stickers, and signage at cost.</li>
+          <li class="c3"><b>Referrals</b> Introduce an organization that should be on the wall.</li>
+          <li class="c4"><b>Money</b> Covers hosting and materials.</li>
         </ul>
         <div class="amount-row" role="group" aria-label="Donation amount">
           <button type="button" class="amount" aria-pressed="false">$5</button>
@@ -573,7 +555,7 @@
           <button type="button" class="amount" aria-pressed="false">$50</button>
           <button type="button" class="amount" aria-pressed="false">Other</button>
         </div>
-        <a class="btn solid" href="#" id="donate" style="width:100%; justify-content:center;">Chip in</a>
+        <a class="btn solid" href="#" id="donate">Chip in</a>
         <p class="note" style="margin-top:1rem;">Donations aren't switched on yet — the Alliance needs an entity to receive them first, so the button above does nothing for now. For space, print or a referral, use the join form above and say which one.</p>
       </div>
     </div>
@@ -582,12 +564,12 @@
   <section id="badge" aria-labelledby="badge-h">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">The shared mark</p>
+        <p class="eyebrow sq5">The shared mark</p>
         <h2 id="badge-h">Wear the tile on your own site.</h2>
         <p>Members put this badge in their footer, linking back to the wall. That link back is what turns scattered sites into one network: someone who finds any member can find the rest.</p>
       </div>
       <a class="badge-demo" href="#top">
-        <span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="bchips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <b>Member · Philadelphia Creative Alliance</b>
       </a>
       <p class="note" style="margin-top:1.6rem;">Paste this anywhere. It's self-contained — no stylesheet, no script, and it renders as the badge above.</p>
@@ -609,12 +591,13 @@
   </section>
 </main>
 
+<div class="band band-foot" aria-hidden="true"></div>
 <footer>
   <div class="wrap foot">
     <div>
       <p class="k">Greater Philadelphia</p>
       <h3>An umbrella for creative organizations. Free for artists.</h3>
-      <p class="k" style="margin-top:.8rem;">© 2026 · A working draft, not yet an incorporated body</p>
+      <p class="k end">© 2026 · A working draft, not yet an incorporated body</p>
     </div>
     <span class="draft-tag">Working draft · v2</span>
   </div>
@@ -634,17 +617,17 @@
     joinEmail:   'contact@iswain.dev',  // Fallback inbox. Swap to hello@philadelphiacreativealliance.com when it exists.
     live:        false,                 // Set true at launch to drop the "Working draft" tag.
 
-    // Kinds of member organisation. `slug` maps to img/tile-<slug>.webp.
+    // Kinds of member organisation. `t` is the tile hue (1-6, the --t1..--t6 colours).
     orgTypes: [
-      { slug:'music-sound',         label:'Music & sound',            blurb:'Venues, labels, promoters, festivals, radio.' },
-      { slug:'visual-arts',         label:'Visual arts & galleries',  blurb:'Galleries, studios, collectives, print shops.' },
-      { slug:'theatre-performance', label:'Theater & performance',    blurb:'Companies, dance, circus, improv, puppetry.' },
-      { slug:'film-media',          label:'Film & media',             blurb:'Production houses, festivals, docs, animation.' },
-      { slug:'literary-publishing', label:'Literary & publishing',    blurb:'Presses, zines, reading series, poetry orgs.' },
-      { slug:'craft-design',        label:'Craft, design & studios',  blurb:'Makerspaces, ceramics, textile, wood, glass.' },
-      { slug:'arts-education',      label:'Arts education & youth',   blurb:'After-school, teaching artists, workshops.' },
-      { slug:'community-spaces',    label:'Community & cultural',     blurb:'Neighborhood arts spaces, cultural centers.' },
-      { slug:'festivals-events',    label:'Festivals & events',       blurb:'Street fairs, open studios, seasonal events.' }
+      { slug:'music-sound',         t:1, label:'Music & sound',            blurb:'Venues, labels, promoters, festivals, radio.' },
+      { slug:'visual-arts',         t:2, label:'Visual arts & galleries',  blurb:'Galleries, studios, collectives, print shops.' },
+      { slug:'theatre-performance', t:3, label:'Theater & performance',    blurb:'Companies, dance, circus, improv, puppetry.' },
+      { slug:'film-media',          t:4, label:'Film & media',             blurb:'Production houses, festivals, docs, animation.' },
+      { slug:'literary-publishing', t:5, label:'Literary & publishing',    blurb:'Presses, zines, reading series, poetry orgs.' },
+      { slug:'craft-design',        t:6, label:'Craft, design & studios',  blurb:'Makerspaces, ceramics, textile, wood, glass.' },
+      { slug:'arts-education',      t:2, label:'Arts education & youth',   blurb:'After-school, teaching artists, workshops.' },
+      { slug:'community-spaces',    t:1, label:'Community & cultural',     blurb:'Neighborhood arts spaces, cultural centers.' },
+      { slug:'festivals-events',    t:4, label:'Festivals & events',       blurb:'Street fairs, open studios, seasonal events.' }
     ],
 
     // Member organisations. { name, type (a slug above), url, blurb }
@@ -671,8 +654,8 @@
 
     // GENERATED artists — tools/profiles.py rewrites this block, do not hand-edit
     artists: [
-      { slug:"major-key", name:"Major Key", disciplines:["musicians-sound", "dancers-performers"], url:"\/artists\/major-key\/" },
-      { slug:"slaw", name:"Shaun \u201cSlaw\u201d Durbin", disciplines:["muralists-street"], url:"\/artists\/slaw\/" }
+      { slug:"major-key", name:"Major Key", disciplines:["musicians-sound", "dancers-performers"], url:"\/artists\/major-key\/", img:"\/img\/artists\/major-key\/tile.webp" },
+      { slug:"slaw", name:"Shaun \u201cSlaw\u201d Durbin", disciplines:["muralists-street"], url:"\/artists\/slaw\/", img:"\/img\/artists\/slaw\/tile.webp" }
     ],
     // END GENERATED artists
   };
@@ -697,10 +680,35 @@
     } catch (e) { return ''; }
   }
 
-  // Slugs come from PCA.orgTypes, but they are interpolated into a style
-  // attribute — restrict them so a stray quote can't break out into CSS.
-  function tileArt(slug) {
-    return /^[a-z0-9-]+$/.test(slug) ? 'url("img/tile-' + slug + '.webp")' : 'none';
+  // Tile hue class, h1t..h6t. Anything that isn't 1-6 falls back to vermilion
+  // rather than producing a class the stylesheet doesn't know.
+  function hueClass(t) {
+    var n = Number(t);
+    return 'h' + (n >= 1 && n <= 6 && Math.floor(n) === n ? n : 1) + 't';
+  }
+
+  // Roster pictures come from tools/profiles.py (a generated tile or the
+  // member's portrait, both under /img/artists/<slug>/). Anything else is
+  // dropped rather than put into an <img src>.
+  function safeImg(path) {
+    return /^\/img\/artists\/[a-z0-9-]+\/[A-Za-z0-9._-]+\.webp$/.test(path || '') ? path : '';
+  }
+
+  // One tile on the wall: a big flat tessera with a plaster plate on it.
+  function wallTile(href, external, t, heading, k, role) {
+    var li = el('li');
+    var a = el('a', 'otile tile ' + hueClass(t));
+    a.href = href;
+    if (external) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+    a.appendChild(el('h3', null, heading));
+    var plate = el('span', 'plate');
+    plate.appendChild(el('span', 'k', k));
+    plate.appendChild(el('span', 'role', role));
+    var ar = el('span', 'arrow', '↗'); ar.setAttribute('aria-hidden', 'true');
+    plate.appendChild(ar);
+    a.appendChild(plate);
+    li.appendChild(a);
+    return li;
   }
 
   // --- the organisation wall -------------------------------------------------
@@ -717,30 +725,13 @@
       var t = typeOf[org.type];
       if (!t) return;                       // unknown slug: skip rather than render a broken tile
       claimed[org.type] = true;
-      var a = el('a', 'tile');
       var href = safeUrl(org.url);
-      a.href = href || '#join';
-      if (href) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-      a.style.backgroundImage = tileArt(t.slug);
-      a.appendChild(el('span', 'k', t.label));
-      a.appendChild(el('h3', null, org.name));
-      a.appendChild(el('span', 'role', org.blurb || t.blurb));
-      var ar = el('span', 'arrow', '↗'); ar.setAttribute('aria-hidden', 'true');
-      a.appendChild(ar);
-      wall.appendChild(a);
+      wall.appendChild(wallTile(href || '#join', !!href, t.t, org.name, t.label, org.blurb || t.blurb));
     });
 
     PCA.orgTypes.forEach(function (t) {
       if (claimed[t.slug]) return;
-      var a = el('a', 'tile open');
-      a.href = '#join';
-      a.style.backgroundImage = tileArt(t.slug);
-      a.appendChild(el('span', 'k', 'Invitation open'));
-      a.appendChild(el('h3', null, t.label));
-      a.appendChild(el('span', 'role', t.blurb));
-      var ar = el('span', 'arrow', '↗'); ar.setAttribute('aria-hidden', 'true');
-      a.appendChild(ar);
-      wall.appendChild(a);
+      wall.appendChild(wallTile('#join', false, t.t, t.label, 'Invitation open', t.blurb));
     });
   }
 
@@ -764,30 +755,40 @@
     var grid = byId('disciplines');
     if (grid) {
       PCA.disciplines.forEach(function (d) {
-        var a = el('a', null);
+        var li = el('li');
+        var a = el('a', 'tile ' + hueClass(d.t), d.label);
         a.href = '#join-artist';   // opens the free artist form, not the org one
         a.addEventListener('click', function () {
-          var sel = byId('ad'); if (sel) sel.value = d.label;   // carry the chip's discipline into the form
+          var sel = byId('ad'); if (sel) sel.value = d.label;   // carry the tile's discipline into the form
         });
-        var dot = el('span', 'dot');
-        dot.style.background = 'var(--t' + (d.t || 1) + ')';
-        dot.setAttribute('aria-hidden', 'true');
-        a.appendChild(dot);
-        a.appendChild(document.createTextNode(d.label));
-        grid.appendChild(a);
+        li.appendChild(a);
+        grid.appendChild(li);
       });
     }
     var roster = byId('roster');
     if (roster) {
+      var hueOf = {};
+      PCA.disciplines.forEach(function (d) { hueOf[d.slug] = d.t; });
       PCA.artists.forEach(function (m) {
-        var a = el('a', null);
+        var li = el('li');
+        // The card takes the member's colour: their first discipline's hue.
+        var a = el('a', 'acard tile ' + hueClass(hueOf[(m.disciplines || [])[0]]));
         var href = safeUrl(m.url);
         a.href = href || '#join-artist';
         // Member profiles live on this site: only another site opens a new tab.
         if (href && new URL(href).origin !== window.location.origin) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-        a.appendChild(el('span', 'n', m.name));
-        a.appendChild(el('span', 'd', disciplineLabels(m.disciplines)));
-        roster.appendChild(a);
+        var src = safeImg(m.img);
+        if (src) {
+          var img = el('img');
+          img.src = src; img.alt = ''; img.width = 900; img.height = 900; img.loading = 'lazy';
+          a.appendChild(img);
+        }
+        var who = el('span', 'who');
+        who.appendChild(el('span', 'n', m.name));
+        who.appendChild(el('span', 'd', disciplineLabels(m.disciplines)));
+        a.appendChild(who);
+        li.appendChild(a);
+        roster.appendChild(li);
       });
     }
   }

@@ -40,10 +40,21 @@ SITE = "https://www.philadelphiacreativealliance.com"
 # account inbox confirmed 8 Nov 2026 by one test request; the relay to the member is manual.
 FORMSPREE_ID = "mbdnqlvo"
 
+# Bumped whenever artists/profile.css changes, so a returning visitor's cached
+# stylesheet can't pair the new markup with the old look.
+CSS_VERSION = "2026-11-10"
+
 # Shown at the top of every page rendered with draft=True (tools/profiles.py
 # --preview). Drafts are for the artist to review before they agree, in
 # writing, to be listed; the page must say so on its face, not only in a URL.
 DRAFT_NOTE = "Draft \u2014 for the artist\u2019s review; not published"
+
+# Shown in the empty gallery frames until a member sends photos of their work.
+SLOT_CAPTION = "Reserved for work photos"
+
+# Each discipline hue as a body class; artists/profile.css lays the banner,
+# tags and accents in that colour.
+HUES = ("vermilion", "cobalt", "marigold", "jade", "fuchsia", "violet")
 
 STATUS_LABEL = {
     "open": "Taking work now",
@@ -128,6 +139,10 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
         f'<img class="portrait" src="/img/artists/{_e(profile.slug)}/'
         f'{_e(portrait_src)}" alt="{_e(portrait_alt)}">'
     )
+    img_dir = f"/img/artists/{_e(profile.slug)}"
+    hue = discipline_by_slug(profile.disciplines[0]).hue
+    if hue not in HUES:
+        raise ValueError(f"{profile.slug}: no stylesheet colour for hue {hue!r}")
 
     works = ""
     for work in profile.works:
@@ -145,13 +160,26 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
         )
 
     links = "".join(
-        f'<li><a href="{_e(link.url)}" rel="noopener">{_e(link.label)}</a></li>'
+        f'<li><a href="{_e(link.url)}" rel="noopener">{_e(link.label)}'
+        '<span class="arrow" aria-hidden="true">\u2197</span></a></li>'
         for link in profile.links
     )
 
     # A heading or an empty wrapper with nothing under it is a broken page:
     # a member may join before they send photos, links or what they're open to.
-    works_section = f'<section class="works">{works}</section>\n' if works else ""
+    # No photos yet: the gallery frames stay up, empty, so the page reads as
+    # a wall waiting for work rather than a page with a hole in it.
+    works_section = (
+        f'<section class="works">{works}</section>\n'
+        if works
+        else (
+            '<div class="slots">'
+            f'<div class="slot big"><p class="slot-cap">{_e(SLOT_CAPTION)}</p></div>'
+            '<div class="slot" aria-hidden="true"></div>'
+            '<div class="slot" aria-hidden="true"></div>'
+            "</div>\n"
+        )
+    )
     links_section = (
         f'<section class="links"><ul>{links}</ul></section>\n' if links else ""
     )
@@ -190,14 +218,17 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 <title>{_e(profile.name)} — Philadelphia Creative Alliance</title>
 <link rel="canonical" href="{_e(url)}">
 <meta name="description" content="{_e(profile.tagline)}">
+<meta name="theme-color" content="#E9E7E0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141019" media="(prefers-color-scheme: dark)">
 <meta property="og:title" content="{_e(profile.name)}">
 <meta property="og:description" content="{_e(profile.tagline)}">
 <meta property="og:image" content="{_e(hero)}">
 <meta property="og:url" content="{_e(url)}">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/artists/profile.css">
+<link rel="preload" href="/fonts/bonum-bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/artists/profile.css?v={CSS_VERSION}">
 </head>
-<body>
+<body class="hue-{hue}">
 {draft_note}<a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
 <a class="brand" href="/"><span class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Philadelphia Creative Alliance</span></a>
@@ -205,21 +236,34 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 </header>
 <main id="main">
 <header class="profile-head">
-{portrait}
-<h1>{_e(profile.name)}</h1>
+<picture class="wall"><source media="(max-width: 760px)" srcset="{img_dir}/wall-tall.webp"><img src="{img_dir}/wall-wide.webp" alt="" width="2400" height="1000"></picture>
+<div class="socket"><div class="panel">
 <ul class="tags">{tags}</ul>
+<h1>{_e(profile.name)}</h1>
 <p class="location">{_e(profile.location)}</p>
 {badge}
+</div></div>
 </header>
+<div class="wrap exhibit">
+<div class="frame">{portrait}</div>
+<div class="label">
 <section class="tagline"><p>{_e(profile.tagline)}</p></section>
 <section class="bio">{bio}</section>
-{works_section}{availability_section}{links_section}<section class="contact">
+{availability_section}{links_section}</div>
+</div>
+<div class="wrap gallery">
+{works_section}</div>
+<div class="band" aria-hidden="true"><img src="{img_dir}/band.webp" alt="" width="2400" height="220" loading="lazy"></div>
+<div class="wrap after">
+<section class="contact">
 <h2>Get in touch</h2>
 {form_open}
 <input type="hidden" name="profile" value="{_e(profile.slug)}">
 <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" hidden>
-<label>Your name <input type="text" name="name" required></label>
-<label>Your email <input type="email" name="email" required></label>
+<div class="row">
+<label>Your name <input type="text" name="name" autocomplete="name" required></label>
+<label>Your email <input type="email" name="email" autocomplete="email" required></label>
+</div>
 <label>Message <textarea name="message" rows="5" required></textarea></label>
 {submit}
 </form>
@@ -230,10 +274,13 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 <p>Paste this on your own site to link back to the wall.</p>
 <pre><code>{snippet}</code></pre>
 </section>
+</div>
 </main>
 <footer>
+<div class="wrap">
 <a href="/">Philadelphia Creative Alliance</a>
 {member_since}
+</div>
 </footer>
 <dialog id="lightbox"><img alt=""><form method="dialog"><button>Close</button></form></dialog>
 <script>

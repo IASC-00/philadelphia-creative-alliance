@@ -1,21 +1,51 @@
 {
   "_meta": {
-    "generated": "2026-11-08"
+    "generated": "2026-11-10"
+  },
+  "major-key/band.webp": {
+    "height": 220,
+    "sha256": "4e37a10d45be5b85b5b71c78efded6c93f47ee7854d1e1adb4f9176bca0154fa",
+    "width": 2400
   },
   "major-key/index.html": {
-    "sha256": "0eee13d060f8d53b6dbe7a1a84d71d14f655db420677f5c1011a1e838153c128"
+    "sha256": "8317535c85916b8b2b2accecefae1df82e3cbf5c69bbde3b500ffcc16b5c336a"
   },
   "major-key/tile.webp": {
-    "height": 380,
-    "sha256": "44cec54ebd7f0f5be0aad369b36902f22316b0f6a101e60fa49f00fe81f85f4b",
-    "width": 520
+    "height": 900,
+    "sha256": "4d3fa90250f647d9e642acd2c5a43e0fda6ca1d5f031300def749c93fae081fc",
+    "width": 900
+  },
+  "major-key/wall-tall.webp": {
+    "height": 1500,
+    "sha256": "6aac0264fd4cb6ad464b4f1d3aacdd6159173c893cac174932587991cff74dad",
+    "width": 1100
+  },
+  "major-key/wall-wide.webp": {
+    "height": 1000,
+    "sha256": "85a928ae49174427c020293eefad4dec4b1f4fdfc99a2abaf48bfea3eec7f657",
+    "width": 2400
+  },
+  "slaw/band.webp": {
+    "height": 220,
+    "sha256": "07bbb0a889dd57a7d1349d479ab162d1c857804ceefc68705a00be86291b4215",
+    "width": 2400
   },
   "slaw/index.html": {
-    "sha256": "71f17907f71e741fb249a41d44312895c65823fa53d331fc76b385c8ef25caef"
+    "sha256": "17e6bde0f484dad1e612fdaa478cd9ea8018fcfc404dac509dc27a050ad8522f"
   },
   "slaw/tile.webp": {
-    "height": 380,
-    "sha256": "06cbafa512fd56d9e2d8a7362a6348d8cba4d51f60cc2e86c68c964a4669fd38",
-    "width": 520
+    "height": 900,
+    "sha256": "027242ebba646d12f2c6f72d25b77bc1cdcde3c5b02d2a9f1ebbbf606b63c7b5",
+    "width": 900
+  },
+  "slaw/wall-tall.webp": {
+    "height": 1500,
+    "sha256": "b470c1b385edc634b43117edeac5baf67b064f23c64d5a99a82505025a197700",
+    "width": 1100
+  },
+  "slaw/wall-wide.webp": {
+    "height": 1000,
+    "sha256": "7cc4f4e67850fe94cc8f0def7585a3d585e6c6eeab1653d2177474de53435722",
+    "width": 2400
   }
 }

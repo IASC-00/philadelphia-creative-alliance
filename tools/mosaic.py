@@ -260,85 +260,211 @@ def add_grain(img: Image.Image, rng, amount=3.0) -> Image.Image:
     return Image.fromarray(arr)
 
 
-# ------------------------------------------------------------------ assets ----
+# ------------------------------------------------------------------ the wall ---
+# The look chosen 10 Nov 2026 ("The wall"): big and small hand-cut pieces in a
+# tight ink grout, with a few bare plaster sockets where tiles haven't been laid.
+# The homepage hero and the join section are full-bleed walls; every member
+# profile gets a wall laid in the member's own colour.
 
 
-def build_hero(dark: bool) -> Image.Image:
-    name = f"hero-{'dark' if dark else 'light'}"
-    rng = seeded_rng(name)
-    grout = GROUT_DARK if dark else GROUT_LIGHT
-    empty = shift(grout, dv=0.05 if dark else 0.03)
-    img = mosaic_field(
-        1000,
-        1000,
-        13,
-        13,
-        grout,
-        PALETTE,
-        rng,
-        grout_px=3.2,
-        jitter=0.17,
-        fill_rate=0.70,
-        empty_color=empty,
+def inset_miter(pts, d):
+    """Offset a simple polygon inward by d with mitred corners, so a merged
+    piece keeps an even grout line (inset_polygon pulls toward the centroid,
+    which pinches long pieces)."""
+    n = len(pts)
+    area = sum(
+        pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1]
+        for i in range(n)
     )
-    return img
+    sgn = 1.0 if area > 0 else -1.0
+    normals = []
+    for i in range(n):
+        x0, y0 = pts[i]
+        x1, y1 = pts[(i + 1) % n]
+        dx, dy = x1 - x0, y1 - y0
+        ln = math.hypot(dx, dy) or 1.0
+        normals.append((sgn * -dy / ln, sgn * dx / ln))
+    out = []
+    for i in range(n):
+        n1, n2 = normals[i - 1], normals[i]
+        k = d / max(0.25, 1.0 + n1[0] * n2[0] + n1[1] * n2[1])
+        out.append((pts[i][0] + (n1[0] + n2[0]) * k, pts[i][1] + (n1[1] + n2[1]) * k))
+    return out
 
 
-def build_divider(dark: bool) -> Image.Image:
-    name = f"divider-{'dark' if dark else 'light'}"
-    rng = seeded_rng(name)
-    grout = GROUT_DARK if dark else GROUT_LIGHT
-    empty = shift(grout, dv=0.05 if dark else 0.03)
-    return mosaic_field(
-        1600,
-        48,
-        60,
-        2,
-        grout,
-        PALETTE,
-        rng,
-        grout_px=2.0,
-        jitter=0.13,
-        fill_rate=0.58,
-        empty_color=empty,
-    )
+def _block_polygon(gx, gy, r, c, bh, bw):
+    """Perimeter of a merged block through every lattice point on its edge,
+    so it meets its neighbours exactly."""
+    pts = [(gx[r, j], gy[r, j]) for j in range(c, c + bw + 1)]
+    pts += [(gx[i, c + bw], gy[i, c + bw]) for i in range(r + 1, r + bh + 1)]
+    pts += [(gx[r + bh, j], gy[r + bh, j]) for j in range(c + bw - 1, c - 1, -1)]
+    pts += [(gx[i, c], gy[i, c]) for i in range(r + bh - 1, r, -1)]
+    return pts
 
 
-# Organisation types on the wall. Each gets its own hue and its own seeded
-# texture, so no two tiles in the grid look alike.
-ORG_TYPES = [
-    ("music-sound", "vermilion"),
-    ("visual-arts", "cobalt"),
-    ("theatre-performance", "marigold"),
-    ("film-media", "jade"),
-    ("literary-publishing", "fuchsia"),
-    ("craft-design", "violet"),
-    ("arts-education", "cobalt"),
-    ("community-spaces", "vermilion"),
-    ("festivals-events", "jade"),
-]
+def _straighten(gx, gy, blocks):
+    """Pull the mid-edge lattice points of every merged block onto the line
+    between its corners. Without this a 2x2 piece bends into a hexagon and the
+    wall reads as stained glass, not cut tile."""
+    for r, c, bh, bw in blocks:
+        if bh * bw == 1:
+            continue
+        for j in range(c + 1, c + bw):
+            t = (j - c) / bw
+            for i in (r, r + bh):
+                gx[i, j] = gx[i, c] * (1 - t) + gx[i, c + bw] * t
+                gy[i, j] = gy[i, c] * (1 - t) + gy[i, c + bw] * t
+        for i in range(r + 1, r + bh):
+            t = (i - r) / bh
+            for j in (c, c + bw):
+                gx[i, j] = gx[r, j] * (1 - t) + gx[r + bh, j] * t
+                gy[i, j] = gy[r, j] * (1 - t) + gy[r + bh, j] * t
 
 
-def build_org_tile(slug: str, hue_name: str) -> Image.Image:
-    """
-    Texture that sits behind tile text. Tonal (single hue family) and low
-    contrast on purpose — the type has to stay legible over it.
-    """
-    rng = seeded_rng(f"tile-{slug}")
+def _wall_tessera(draw, pts, color, bevel_px):
+    """Flat fill plus a lit top-left edge and a shaded bottom-right one, with a
+    bevel wide enough to read at wall scale."""
+    draw.polygon(pts, fill=color)
+    if bevel_px <= 0:
+        return
+    lit = shift(color, dv=0.14, ds=-0.06)
+    shade = shift(color, dv=-0.17)
+    n = len(pts)
+    cx = sum(p[0] for p in pts) / n
+    cy = sum(p[1] for p in pts) / n
+    inner = inset_miter(pts, bevel_px / 2)
+    for i in range(n):
+        a, b = inner[i], inner[(i + 1) % n]
+        mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+        draw.line(
+            [a, b], fill=lit if (mx - cx) + (my - cy) < 0 else shade, width=bevel_px
+        )
+
+
+def _plan_blocks(rows, cols, rng, p22, p21, p12):
+    taken = np.zeros((rows, cols), bool)
+    blocks = []
+    for r in range(rows):
+        for c in range(cols):
+            if taken[r, c]:
+                continue
+            roll = rng.random()
+            bh, bw = 1, 1
+            if (
+                roll < p22
+                and r + 1 < rows
+                and c + 1 < cols
+                and not taken[r : r + 2, c : c + 2].any()
+            ):
+                bh, bw = 2, 2
+            elif roll < p22 + p21 and c + 1 < cols and not taken[r, c + 1]:
+                bh, bw = 1, 2
+            elif roll < p22 + p21 + p12 and r + 1 < rows and not taken[r + 1, c]:
+                bh, bw = 2, 1
+            taken[r : r + bh, c : c + bw] = True
+            blocks.append((r, c, bh, bw))
+    return blocks
+
+
+def wall(
+    seed: str,
+    w: int,
+    h: int,
+    cell: int,
+    palette: list,
+    *,
+    grout: float = 4.0,
+    jitter: float = 0.15,
+    bevel: int = 2,
+    holes: float = 0.04,
+    hole_ramp=None,
+    accents: list | None = None,
+    accent_rate: float = 0.0,
+    neutral: float = 0.03,
+    merges: tuple = (0.04, 0.07, 0.05),
+) -> Image.Image:
+    """Render one wall. Grout is always the site ink; a bare socket is plaster,
+    the same ground as the panel that carries the headline."""
+    rng = seeded_rng(seed)
+    cols = max(1, round(w / cell))
+    rows = max(1, round(h / cell))
+    W, H = w * SS, h * SS
+    img = Image.new("RGB", (W, H), GROUT_LIGHT)
+    draw = ImageDraw.Draw(img)
+    gx, gy = jittered_lattice(cols, rows, W, H, jitter, rng)
+    field = coherence_field(cols, rows, rng)
+    blocks = _plan_blocks(rows, cols, rng, *merges)
+    _straighten(gx, gy, blocks)
+    for r, c, bh, bw in blocks:
+        pts = inset_miter(_block_polygon(gx, gy, r, c, bh, bw), grout * SS)
+        p_hole = hole_ramp((c + bw / 2) / cols) if hole_ramp is not None else holes
+        if bh * bw == 1 and rng.random() < p_hole:
+            _wall_tessera(draw, pts, shift(PLASTER, dv=rng.normal(0, 0.01)), 0)
+            continue
+        if accents and rng.random() < accent_rate:
+            base = accents[rng.integers(len(accents))]
+        else:
+            base = pick_hue(palette, field[r, c], rng)
+        if rng.random() < neutral:
+            col = shift(base, ds=-0.35, dv=rng.normal(-0.10, 0.04))
+        else:
+            col = shift(
+                base,
+                dh=rng.normal(0, 0.010),
+                ds=rng.normal(0, 0.05),
+                dv=rng.normal(0, 0.065),
+            )
+        _wall_tessera(draw, pts, col, bevel * SS)
+    img = img.resize((w, h), Image.LANCZOS)
+    return add_grain(img, rng, amount=2.6)
+
+
+def hue_family(base) -> list:
+    """Tonal family around one tile hue: a member's colour."""
+    return [
+        base,
+        shift(base, dv=0.10, ds=-0.08),
+        shift(base, dv=-0.14),
+        shift(base, dh=0.025),
+        base,
+        shift(base, dh=-0.02, dv=0.05),
+    ]
+
+
+def _going_up(x: float) -> float:
+    """Socket probability across the 'wall is going up' band: laid at the
+    left, thinning to bare sockets at the right."""
+    return float(np.clip((x - 0.35) * 1.5, 0.0, 0.9))
+
+
+_BAND = dict(holes=0.03, merges=(0.08, 0.14, 0.0))
+
+# Member walls, keyed by output filename: (width, height, cell, extra options).
+# `tile` is the member's own piece (roster card, profile exhibit); `wall-*` is
+# the profile banner, wide for desktop and tall for phones; `band` closes the
+# profile above the contact form.
+MEMBER_WALLS = {
+    "tile.webp": (900, 900, 82, dict(holes=0.0, accent_rate=0.04, neutral=0.0)),
+    "wall-wide.webp": (2400, 1000, 92, dict(holes=0.04, accent_rate=0.09, neutral=0.0)),
+    "wall-tall.webp": (1100, 1500, 96, dict(holes=0.04, accent_rate=0.09, neutral=0.0)),
+    "band.webp": (2400, 220, 110, dict(accent_rate=0.09, **_BAND)),
+}
+
+
+def build_member_wall(slug: str, hue_name: str, filename: str) -> Image.Image:
+    """One of a member's generated walls, laid in their colour with the other
+    five hues as accents. Seeded from the slug, so it never changes for them."""
+    w, h, cell, opts = MEMBER_WALLS[filename]
     base = TILE_HUES[hue_name]
-    deep = shift(base, dv=-0.30, ds=0.06)
-    return mosaic_field(
-        520,
-        380,
-        9,
-        7,
-        deep,
-        [base],
-        rng,
-        grout_px=2.4,
-        jitter=0.19,
-        fill_rate=0.93,
-        tonal=True,
+    others = [v for k, v in TILE_HUES.items() if k != hue_name]
+    return wall(
+        f"member-{slug}-{filename}",
+        w,
+        h,
+        cell,
+        hue_family(base),
+        accents=others,
+        **opts,
     )
 
 
@@ -408,26 +534,44 @@ def build_og() -> Image.Image:
     return img
 
 
-# filename -> (builder, target path). Site imagery ships as WebP: the grain that
-# makes the tesserae look like cut stone also defeats PNG's compressor, and WebP
-# came out ~10x smaller at visually identical quality (1074 KB -> 125 KB on the
-# hero). og.png stays a real PNG — social scrapers are still uneven on WebP — and
-# is palette-quantized instead, which the limited mosaic palette takes well.
-# filename -> (builder, expected (width, height))
+# filename -> (builder, expected (width, height)). Site imagery ships as WebP:
+# the grain that makes the tesserae look like cut stone also defeats PNG's
+# compressor. og.png stays a real PNG (social scrapers are still uneven on
+# WebP) and is palette-quantized instead.
 ASSETS = {
-    "hero-mosaic-light.webp": (lambda: build_hero(False), (1000, 1000)),
-    "hero-mosaic-dark.webp": (lambda: build_hero(True), (1000, 1000)),
-    "divider-light.webp": (lambda: build_divider(False), (1600, 48)),
-    "divider-dark.webp": (lambda: build_divider(True), (1600, 48)),
     "og.png": (build_og, (1200, 630)),
+    "wall-hero-wide.webp": (
+        lambda: wall("wall-hero-wide", 2200, 1300, 84, PALETTE, holes=0.05),
+        (2200, 1300),
+    ),
+    "wall-hero-tall.webp": (
+        lambda: wall("wall-hero-tall", 1100, 1900, 92, PALETTE, holes=0.05),
+        (1100, 1900),
+    ),
+    "wall-join-wide.webp": (
+        lambda: wall("wall-join-wide", 2400, 1100, 84, PALETTE, holes=0.07),
+        (2400, 1100),
+    ),
+    "wall-join-tall.webp": (
+        lambda: wall("wall-join-tall", 1100, 1500, 92, PALETTE, holes=0.07),
+        (1100, 1500),
+    ),
+    "band-up.webp": (
+        lambda: wall(
+            "band-up", 2400, 220, 110, PALETTE, hole_ramp=_going_up,
+            merges=(0.06, 0.10, 0.0),
+        ),
+        (2400, 220),
+    ),
+    "band-1.webp": (lambda: wall("band-1", 2400, 220, 110, PALETTE, **_BAND), (2400, 220)),
+    "band-2.webp": (lambda: wall("band-2", 2400, 220, 110, PALETTE, **_BAND), (2400, 220)),
+    "band-foot.webp": (
+        lambda: wall("band-foot", 2400, 220, 110, PALETTE, **_BAND),
+        (2400, 220),
+    ),
 }
-for _slug, _hue in ORG_TYPES:
-    ASSETS[f"tile-{_slug}.webp"] = (
-        lambda s=_slug, h=_hue: build_org_tile(s, h),
-        (520, 380),
-    )
 
-WEBP_QUALITY = 82
+WEBP_QUALITY = 80
 MANIFEST = IMG / "manifest.json"
 
 
