@@ -205,12 +205,13 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
     # the offer in its <select>; with JS off the select still lists every offer.
     offers = "".join(
         '<li class="offer">'
-        f"<h3>{_e(o.title)}</h3>"
+        f'<h3 id="offer-{i}">{_e(o.title)}</h3>'
         + (f"<p>{_e(o.detail)}</p>" if o.detail else "")
         + (f'<p class="price">{_e(o.price)}</p>' if o.price else "")
-        + f'<a class="ask" href="#contact" data-offer="{_e(o.title)}">Request this</a>'
+        + f'<a class="ask" href="#contact" data-offer="{_e(o.title)}"'
+        f' aria-describedby="offer-{i}">Request this</a>'
         "</li>"
-        for o in profile.offers
+        for i, o in enumerate(profile.offers)
     )
     offers_section = (
         '<div class="wrap shop">\n'
@@ -224,8 +225,14 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
     contact_heading = "Request to book" if offers else "Get in touch"
     offer_select = (
         '<label>What it\u2019s for <select name="offer" id="offer-pick">'
-        + "".join(f"<option>{_e(o.title)}</option>" for o in profile.offers)
-        + "<option>Something else</option></select></label>\n"
+        # No offer preselected, or every general message would be filed
+        # under the first one (exit-gate 13 Nov, #2).
+        '<option value="" selected>Choose one (optional)</option>'
+        + "".join(
+            f'<option value="{_e(o.title)}">{_e(o.title)}</option>'
+            for o in profile.offers
+        )
+        + '<option value="other">Something else</option></select></label>\n'
         if offers
         else ""
     )
@@ -336,8 +343,14 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
   }});
   var pick = document.getElementById('offer-pick');
   document.querySelectorAll('.ask').forEach(function (link) {{
-    link.addEventListener('click', function () {{
-      if (pick) {{ pick.value = link.dataset.offer; }}
+    link.addEventListener('click', function (event) {{
+      if (!pick) {{ return; }}
+      // Handle the jump here so focus lands on the select and stays there;
+      // the plain #contact link is the JS-off path.
+      event.preventDefault();
+      pick.value = link.dataset.offer;
+      document.getElementById('contact').scrollIntoView();
+      pick.focus({{ preventScroll: true }});
     }});
   }});
 }})();

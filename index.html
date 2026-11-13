@@ -335,7 +335,7 @@
       <div class="panel">
         <p class="eyebrow sq1">Greater Philadelphia · Artists and creative organizations</p>
         <h1 id="hero-h">A marketplace for the region's creatives.</h1>
-        <p class="lede">Every member gets a page of their own: their work, what they offer, and how to book them. We keep the day-to-day details up to date, so they can spend their time on the work.</p>
+        <p class="lede">Each member gets a page of their own for their work, what they offer and how to reach them, and we keep the day-to-day details up to date, so they can spend their time on the work. Booking through member pages is just starting.</p>
         <p class="free">Artists join free. Always.</p>
         <div class="doors">
           <a class="btn solid" href="#join-artist">Join as an artist — free</a>
@@ -383,10 +383,10 @@
       <div class="sec-head">
         <p class="eyebrow sq5">Artists</p>
         <h2 id="artists-h">Browse the artists.</h2>
-        <p>Every card is a member's page: their work, what they offer and how to book them. You don't need an organization behind you to join, and artists join free. Free is not an introductory rate — artist membership stays free.</p>
+        <p>Every card opens a member's page. You don't need an organization behind you to join, and artists join free. Free is not an introductory rate — artist membership stays free.</p>
       </div>
       <ul class="roster" id="roster"></ul>
-      <p class="disc-lede">Every discipline is open. Pick yours to join free:</p>
+      <p class="disc-lede" id="disc-lede" hidden>Every discipline is open. Pick yours to join free:</p>
       <ul class="disc" id="disciplines"></ul>
       <p class="after"><a class="btn solid" href="#join-artist">Join as an artist — free</a></p>
     </div>
@@ -757,6 +757,7 @@
   function renderArtists() {
     var grid = byId('disciplines');
     if (grid) {
+      var lede = byId('disc-lede'); if (lede) lede.hidden = false;   // only once the list it introduces exists
       PCA.disciplines.forEach(function (d) {
         var li = el('li');
         var a = el('a', 'tile ' + hueClass(d.t), d.label);

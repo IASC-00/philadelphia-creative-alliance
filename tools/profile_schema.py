@@ -59,6 +59,8 @@ MAX_OFFERS = 6
 MAX_OFFER_TITLE = 60
 MAX_OFFER_DETAIL = 240
 MAX_OFFER_PRICE = 40
+# The contact form's catch-all option is labelled "Something else" with value "other".
+RESERVED_OFFER_TITLES = frozenset({"something else", "other"})
 STATUSES = frozenset({"open", "limited", "closed"})
 
 
@@ -204,6 +206,9 @@ def _offers(raw) -> tuple[Offer, ...]:
         where = f"offers[{i}]"
         if not isinstance(item, dict):
             raise ProfileError(f"{where} must be an object with a title")
+        for key in item:
+            if key not in ("title", "detail", "price"):
+                raise ProfileError(f"{where}: unknown field {key!r}")
         fields = {}
         for key, limit in (
             ("title", MAX_OFFER_TITLE),
@@ -213,7 +218,11 @@ def _offers(raw) -> tuple[Offer, ...]:
             value = item.get(key, "")
             if not isinstance(value, str):
                 raise ProfileError(f"{where}: {key} must be text")
-            value = value.strip()
+            # Inner runs collapse too: an <option> without a value attribute
+            # takes its whitespace-collapsed text, so a raw "DJ  sets" would
+            # never match its own data-offer and the request would arrive
+            # with no offer at all (exit-gate 13 Nov, #3).
+            value = " ".join(value.split())
             if len(value) > limit:
                 raise ProfileError(
                     f"{where}: {key} is {len(value)} characters, maximum is {limit}"
@@ -221,6 +230,10 @@ def _offers(raw) -> tuple[Offer, ...]:
             fields[key] = value
         if not fields["title"]:
             raise ProfileError(f"{where}: missing title")
+        if fields["title"].casefold() in RESERVED_OFFER_TITLES:
+            raise ProfileError(
+                f"{where}: title {fields['title']!r} is reserved for the form's catch-all"
+            )
         # The title is also the value of the contact form's <select>; two the
         # same would make a request ambiguous about which one was meant.
         if fields["title"].casefold() in seen:
