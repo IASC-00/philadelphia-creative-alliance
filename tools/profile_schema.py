@@ -55,6 +55,10 @@ def discipline_by_slug(slug: str) -> Discipline:
 MAX_DISCIPLINES = 3
 MAX_WORKS = 12
 MAX_TAGLINE = 90
+MAX_OFFERS = 6
+MAX_OFFER_TITLE = 60
+MAX_OFFER_DETAIL = 240
+MAX_OFFER_PRICE = 40
 STATUSES = frozenset({"open", "limited", "closed"})
 
 
@@ -82,6 +86,16 @@ class Link:
 
 
 @dataclass(frozen=True)
+class Offer:
+    """Something a member can be booked or bought for. All three fields are
+    the member's own words; `price` is free text and is never parsed."""
+
+    title: str
+    detail: str = ""
+    price: str = ""
+
+
+@dataclass(frozen=True)
 class Availability:
     status: str
     openTo: tuple[str, ...]
@@ -103,6 +117,7 @@ class Profile:
     consent: dict  # Preserved as dict to maintain full data
     joined: str
     live: bool
+    offers: tuple[Offer, ...] = ()
 
 
 def _require(data: dict, field: str):
@@ -169,6 +184,50 @@ def _image(raw: dict, where: str) -> Work:
         medium=raw.get("medium", ""),
         caption=raw.get("caption", ""),
     )
+
+
+def _offers(raw) -> tuple[Offer, ...]:
+    """The member's offers, validated. Optional; an absent key is no offers.
+
+    Same discipline as `_image`: wrong types become named ProfileErrors, not
+    TypeErrors, because check() only catches ProfileError.
+    """
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ProfileError("offers must be a list")
+    if len(raw) > MAX_OFFERS:
+        raise ProfileError(f"offers: at most {MAX_OFFERS} allowed")
+    out: list[Offer] = []
+    seen: set[str] = set()
+    for i, item in enumerate(raw):
+        where = f"offers[{i}]"
+        if not isinstance(item, dict):
+            raise ProfileError(f"{where} must be an object with a title")
+        fields = {}
+        for key, limit in (
+            ("title", MAX_OFFER_TITLE),
+            ("detail", MAX_OFFER_DETAIL),
+            ("price", MAX_OFFER_PRICE),
+        ):
+            value = item.get(key, "")
+            if not isinstance(value, str):
+                raise ProfileError(f"{where}: {key} must be text")
+            value = value.strip()
+            if len(value) > limit:
+                raise ProfileError(
+                    f"{where}: {key} is {len(value)} characters, maximum is {limit}"
+                )
+            fields[key] = value
+        if not fields["title"]:
+            raise ProfileError(f"{where}: missing title")
+        # The title is also the value of the contact form's <select>; two the
+        # same would make a request ambiguous about which one was meant.
+        if fields["title"].casefold() in seen:
+            raise ProfileError(f"{where}: duplicate title {fields['title']!r}")
+        seen.add(fields["title"].casefold())
+        out.append(Offer(**fields))
+    return tuple(out)
 
 
 def _is_iso_date(value) -> bool:
@@ -270,6 +329,7 @@ def load_profile(path: Path) -> Profile:
         consent=consent,
         joined=data.get("joined", ""),
         live=live,
+        offers=_offers(data.get("offers")),
     )
 
 

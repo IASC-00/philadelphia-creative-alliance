@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "generated": "2026-11-10"
+    "generated": "2026-11-13"
   },
   "major-key/band.webp": {
     "height": 220,
@@ -8,7 +8,7 @@
     "width": 2400
   },
   "major-key/index.html": {
-    "sha256": "a10901cc5a2f373ae9ac94f17d6402e0ab592ae4cccaeeee185d60538ecb519b"
+    "sha256": "c71669109c7f9fd5fa24aff4e1013ae86b977d3d59e378534574ee905130e5c7"
   },
   "major-key/tile.webp": {
     "height": 900,
@@ -31,7 +31,7 @@
     "width": 2400
   },
   "slaw/index.html": {
-    "sha256": "20773bdf17f18442d04f7a16680c10ecda1175821025b89e40495610596ea829"
+    "sha256": "7eb62c7226b2d52da58dabd7db103f5f15fac762945adabe4e2d4b01b6352208"
   },
   "slaw/tile.webp": {
     "height": 900,

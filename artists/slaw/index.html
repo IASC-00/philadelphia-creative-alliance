@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://www.philadelphiacreativealliance.com/artists/slaw/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/fonts/bonum-bold.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/artists/profile.css?v=da01a8fa45">
+<link rel="stylesheet" href="/artists/profile.css?v=6a1d4e975f">
 </head>
 <body class="hue-cobalt">
 <a class="skip" href="#main">Skip to content</a>
@@ -46,7 +46,7 @@
 </div>
 <div class="band" aria-hidden="true"><img src="/img/artists/slaw/band.webp" alt="" width="2400" height="220" loading="lazy"></div>
 <div class="wrap after">
-<section class="contact">
+<section class="contact" id="contact">
 <h2>Get in touch</h2>
 <form action="https://formspree.io/f/mbdnqlvo" method="POST">
 <input type="hidden" name="profile" value="slaw">
@@ -83,6 +83,12 @@
       img.src = button.dataset.src;
       img.alt = button.dataset.alt;
       dialog.showModal();
+    });
+  });
+  var pick = document.getElementById('offer-pick');
+  document.querySelectorAll('.ask').forEach(function (link) {
+    link.addEventListener('click', function () {
+      if (pick) { pick.value = link.dataset.offer; }
     });
   });
 })();

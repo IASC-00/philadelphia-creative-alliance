@@ -200,6 +200,36 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
         else ""
     )
 
+    # The shop half: what the member can be booked or bought for, in their own
+    # words. Each "Request this" jumps to the contact form and (with JS) picks
+    # the offer in its <select>; with JS off the select still lists every offer.
+    offers = "".join(
+        '<li class="offer">'
+        f"<h3>{_e(o.title)}</h3>"
+        + (f"<p>{_e(o.detail)}</p>" if o.detail else "")
+        + (f'<p class="price">{_e(o.price)}</p>' if o.price else "")
+        + f'<a class="ask" href="#contact" data-offer="{_e(o.title)}">Request this</a>'
+        "</li>"
+        for o in profile.offers
+    )
+    offers_section = (
+        '<div class="wrap shop">\n'
+        '<section class="offers" id="offers" aria-labelledby="offers-h">\n'
+        '<h2 id="offers-h">Book or buy</h2>\n'
+        f'<ul class="offer-grid">{offers}</ul>\n'
+        "</section>\n</div>\n"
+        if offers
+        else ""
+    )
+    contact_heading = "Request to book" if offers else "Get in touch"
+    offer_select = (
+        '<label>What it\u2019s for <select name="offer" id="offer-pick">'
+        + "".join(f"<option>{_e(o.title)}</option>" for o in profile.offers)
+        + "<option>Something else</option></select></label>\n"
+        if offers
+        else ""
+    )
+
     # Displayed as copyable source text inside <pre><code>, so it must render as
     # visible markup, never be parsed as markup itself: `_e` turns "<a href=..."
     # into "&lt;a href=..." before it's placed in the document.
@@ -261,12 +291,12 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 <section class="bio">{bio}</section>
 {availability_section}{links_section}</div>
 </div>
-<div class="wrap gallery">
+{offers_section}<div class="wrap gallery">
 {works_section}</div>
 <div class="band" aria-hidden="true"><img src="{img_dir}/band.webp" alt="" width="2400" height="220" loading="lazy"></div>
 <div class="wrap after">
-<section class="contact">
-<h2>Get in touch</h2>
+<section class="contact" id="contact">
+<h2>{contact_heading}</h2>
 {form_open}
 <input type="hidden" name="profile" value="{_e(profile.slug)}">
 <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" hidden>
@@ -274,7 +304,7 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
 <label>Your name <input type="text" name="name" autocomplete="name" required></label>
 <label>Your email <input type="email" name="email" autocomplete="email" required></label>
 </div>
-<label>Message <textarea name="message" rows="5" required></textarea></label>
+{offer_select}<label>Message <textarea name="message" rows="5" required></textarea></label>
 {submit}
 </form>
 <p class="relay">This form goes to the Alliance, which passes it on to the member. Their address is not published here.</p>
@@ -302,6 +332,12 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
       img.src = button.dataset.src;
       img.alt = button.dataset.alt;
       dialog.showModal();
+    }});
+  }});
+  var pick = document.getElementById('offer-pick');
+  document.querySelectorAll('.ask').forEach(function (link) {{
+    link.addEventListener('click', function () {{
+      if (pick) {{ pick.value = link.dataset.offer; }}
     }});
   }});
 }})();
