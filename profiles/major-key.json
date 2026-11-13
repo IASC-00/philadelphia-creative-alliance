@@ -10,8 +10,28 @@
     "Major Key (Quianna) is an artist, host and creator in Philadelphia."
   ],
   "location": "Philadelphia, PA",
-  "portrait": null,
-  "works": [],
+  "portrait": {
+    "src": "major-key-portrait-majorkey.jpg",
+    "alt": "Major Key in a black leather jacket against a dark backdrop."
+  },
+  "works": [
+    {
+      "src": "major-key-cover-art.jpg",
+      "alt": "Major Key sitting in a white-brick window frame in fur boots."
+    },
+    {
+      "src": "major-key-moment-hosting.jpg",
+      "alt": "Major Key in a white top and grey jacket, hands raised beside her face."
+    },
+    {
+      "src": "major-key-moment-live.jpg",
+      "alt": "Major Key in a white top, grey jacket and tie against a dark backdrop."
+    },
+    {
+      "src": "major-key-moment-bts.jpg",
+      "alt": "Major Key in a white top and plaid shorts, one hand in her hair, on a white backdrop."
+    }
+  ],
   "links": [
     {
       "label": "iammajorkey.com",
@@ -26,7 +46,8 @@
   "consent": {
     "listed": true,
     "date": "2026-11-08",
-    "how": "Agreed to be listed; told to Ian Swain"
+    "how": "Agreed to be listed; told to Ian Swain. Photos from her own site, iammajorkey.com (added 13 Nov 2026).",
+    "images": true
   },
   "joined": "2026-11-08",
   "live": true

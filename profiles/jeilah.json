@@ -1,0 +1,75 @@
+{
+  "slug": "jeilah",
+  "name": "Jeilah",
+  "disciplines": [
+    "musicians-sound"
+  ],
+  "tagline": "Kenya-born, Chicago-based DJ mixing disco, soul, reggae, rap, pop and afro house.",
+  "bio": [
+    "Jeilah is a DJ. She was born in Kenya and is based in Chicago.",
+    "She grew up around African music and dance and names Fela Kuti as an influence. Her sets mix disco and soul with reggae, rap, pop and afro house.",
+    "She has played Soho House, the Four Seasons and Celeste.",
+    "She also works as a model.",
+    "Three of her mixes are on SoundCloud: a disco demo mix, a cocktail mix and an afro mix."
+  ],
+  "location": "Chicago, IL",
+  "portrait": {
+    "src": "jeilah-home-hero.png",
+    "alt": "Jeilah smiling in a pink suit, holding a mirror ball against a pink wall."
+  },
+  "works": [
+    {
+      "src": "jeilah-music-hero.png",
+      "alt": "Jeilah standing in a long plum satin gown against a soft gradient backdrop."
+    },
+    {
+      "src": "jeilah-gallery-16.png",
+      "alt": "Jeilah laughing with her eyes closed, wearing a gold sequin jacket."
+    },
+    {
+      "src": "jeilah-gallery-30.png",
+      "alt": "Jeilah in a dark green beaded dress and black gloves in front of green ivy."
+    }
+  ],
+  "links": [
+    {
+      "label": "Website",
+      "url": "https://jeilah.com/"
+    },
+    {
+      "label": "Instagram (@therealjeilah)",
+      "url": "https://www.instagram.com/therealjeilah/"
+    },
+    {
+      "label": "SoundCloud",
+      "url": "https://soundcloud.com/therealjeilah"
+    },
+    {
+      "label": "Spotify",
+      "url": "https://open.spotify.com/artist/2TDFHYd5MtEJSZ3409g7Oc"
+    }
+  ],
+  "availability": {
+    "status": "open",
+    "openTo": [],
+    "updated": "2026-11-13"
+  },
+  "joined": "2026-11-13",
+  "live": true,
+  "offers": [
+    {
+      "title": "DJ sets for private events",
+      "detail": "Disco and soul mixed with reggae, rap, pop and afro house, for your own party or event."
+    },
+    {
+      "title": "DJ bookings for venues and events",
+      "detail": "Club nights, hotel and restaurant evenings, brand events."
+    }
+  ],
+  "consent": {
+    "listed": true,
+    "images": true,
+    "date": "2026-11-13",
+    "how": "Agreed through Harry Hayman, 13 Nov 2026. Photos from her own site, jeilah.com."
+  }
+}

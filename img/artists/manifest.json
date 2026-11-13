@@ -2,18 +2,76 @@
   "_meta": {
     "generated": "2026-11-13"
   },
+  "jeilah/band.webp": {
+    "height": 220,
+    "sha256": "6b6c62b0cdadd4b28a37de0f75a80b9d7e9158f49fbe50a1f48a6139fcac6b74",
+    "width": 2400
+  },
+  "jeilah/index.html": {
+    "sha256": "1926a4f92853030932c42660726f264a1b785e6b203d56a0b42e8d788bc5e89e"
+  },
+  "jeilah/jeilah-gallery-16.webp": {
+    "height": 800,
+    "sha256": "27a1e5881b734e59ef45ca0dab0e135821b0eca477daec75d2de9cd58282c324",
+    "width": 533
+  },
+  "jeilah/jeilah-gallery-30.webp": {
+    "height": 800,
+    "sha256": "7c6dc90041e1674f0f83357c1adeefc18e044f281285a8eb0b0645481ecfaf54",
+    "width": 533
+  },
+  "jeilah/jeilah-home-hero.webp": {
+    "height": 864,
+    "sha256": "d4d5ddc9295e61cb2e69e6d9d2d8567e88de85ffd6fe37feabf6217a3e5a393a",
+    "width": 1600
+  },
+  "jeilah/jeilah-music-hero.webp": {
+    "height": 857,
+    "sha256": "235ba524e4ab2308821dd1197901e02317e720e65c44ded5c2f559e5b953040e",
+    "width": 1600
+  },
+  "jeilah/wall-tall.webp": {
+    "height": 1500,
+    "sha256": "2dc29b5a8359bd62451637b422196000eadadd895860b2f43cb5a8cd8fb558b4",
+    "width": 1100
+  },
+  "jeilah/wall-wide.webp": {
+    "height": 1000,
+    "sha256": "df42881880442728b86d99f9619bcd07dbaa71c8e640cf4afce95dfb655e03cd",
+    "width": 2400
+  },
   "major-key/band.webp": {
     "height": 220,
     "sha256": "4e37a10d45be5b85b5b71c78efded6c93f47ee7854d1e1adb4f9176bca0154fa",
     "width": 2400
   },
   "major-key/index.html": {
-    "sha256": "1cfbd9cac8f04f96534533f0624df3b9db1d82e4bc1754896affa17ef59a8075"
+    "sha256": "3b2cdbea35b2473ee404c4190dc65e145578b2855e0458e8b3ae171f5558b119"
   },
-  "major-key/tile.webp": {
-    "height": 900,
-    "sha256": "4d3fa90250f647d9e642acd2c5a43e0fda6ca1d5f031300def749c93fae081fc",
-    "width": 900
+  "major-key/major-key-cover-art.webp": {
+    "height": 1080,
+    "sha256": "90005ebe6feabb6c31a140f6dd54063171993156eb4940b4bce7cc4add32839f",
+    "width": 1080
+  },
+  "major-key/major-key-moment-bts.webp": {
+    "height": 1200,
+    "sha256": "0caab0323b7d545e97ef34bdcbe7a3893d59621caeaa36de040940e1cf4c97a9",
+    "width": 960
+  },
+  "major-key/major-key-moment-hosting.webp": {
+    "height": 1200,
+    "sha256": "10d5fee0c3d23b5cf2acb1a5d25b127c4d30f11b54dd9f9e95103eb9773235db",
+    "width": 857
+  },
+  "major-key/major-key-moment-live.webp": {
+    "height": 1200,
+    "sha256": "3adbf9a0f71c4e22566286db42b1f6188e21d54ba2774718e5a2de5d5282b622",
+    "width": 961
+  },
+  "major-key/major-key-portrait-majorkey.webp": {
+    "height": 1200,
+    "sha256": "1256492d457c6f53bc474a6263ffda9156fd9b7ee016d95c92847d8fdcdac80e",
+    "width": 961
   },
   "major-key/wall-tall.webp": {
     "height": 1500,
@@ -31,7 +89,12 @@
     "width": 2400
   },
   "slaw/index.html": {
-    "sha256": "2a16e15cd17fa7894d10d3ea7456470dace64b6af817c0fbfaa5357ed2749692"
+    "sha256": "d42a7aa96070c2b2d319f9e5a9677cf24465ebc5b4bc4b596f7bcf4c4e63ca95"
+  },
+  "slaw/slaw-belfield-interior.webp": {
+    "height": 1067,
+    "sha256": "a9ea1f6be50a70322ad7e309d85ec8ecc83861e5d94d6b74e57669fe9fcb7005",
+    "width": 1600
   },
   "slaw/tile.webp": {
     "height": 900,

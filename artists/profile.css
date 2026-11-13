@@ -144,7 +144,11 @@ p { max-width: 62ch; }
 
 /* the gallery: work photos in grout, or empty frames until they arrive */
 .gallery { padding-bottom: clamp(3rem, 7vw, 5.5rem); }
-.works { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: var(--gap); padding: var(--gap); background: var(--grout); }
+/* packed columns, so photos of different shapes sit tight in the grout with no gaps */
+.works { columns: 3 17rem; column-gap: var(--gap); padding: var(--gap) var(--gap) 0; background: var(--grout); }
+.works > .work { break-inside: avoid; margin: 0 0 var(--gap); }
+/* one photo fills the wall rather than sitting small in a corner of it */
+.works:has(> .work:only-child) { columns: 1; }
 .work { margin: 0; background: var(--card); }
 .work img { width: 100%; height: auto; display: block; }
 .work figcaption { font: .8rem/1.4 var(--mono); color: var(--text-soft); padding: .7rem .8rem .8rem; }

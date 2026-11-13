@@ -137,3 +137,10 @@ def test_each_request_link_is_described_by_its_offer(tmp_path):
     html = render_profile(load_profile(write_profile(tmp_path, offers=TWO)), TODAY)
     assert '<h3 id="offer-1">Club nights</h3>' in html
     assert 'aria-describedby="offer-1"' in html
+
+
+def test_a_work_with_no_title_medium_year_or_caption_has_no_empty_caption(tmp_path):
+    works = [{"src": "work-01.jpg", "alt": "A work."}]
+    html = render_profile(load_profile(write_profile(tmp_path, works=works)), TODAY)
+    assert "<figcaption></figcaption>" not in html
+    assert '<figure class="work">' in html and "<figcaption" not in html

@@ -11,7 +11,15 @@
   ],
   "location": "Philadelphia, PA",
   "portrait": null,
-  "works": [],
+  "works": [
+    {
+      "src": "slaw-belfield-interior.jpg",
+      "alt": "Mural of a girl with big orange hair, yellow overalls and a basket of tulips, painted on a pale blue stairwell wall.",
+      "title": "Belfield Recreation Center interior murals",
+      "year": "2022",
+      "caption": "Photo: Mural Arts Philadelphia."
+    }
+  ],
   "links": [
     {
       "label": "Mural Arts artist page",
@@ -30,7 +38,8 @@
   "consent": {
     "listed": true,
     "date": "2026-11-08",
-    "how": "Agreed to be listed; told to Ian Swain"
+    "how": "Agreed to be listed; told to Ian Swain. Photo from his Mural Arts Philadelphia artwork page (added 13 Nov 2026).",
+    "images": true
   },
   "joined": "2026-11-08",
   "live": true

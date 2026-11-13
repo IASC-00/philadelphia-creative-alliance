@@ -164,9 +164,16 @@ def render_profile(profile: Profile, today: date, draft: bool = False) -> str:
             f' data-alt="{_e(work.alt)}">'
             f'<img src="{src}" alt="{_e(work.alt)}" loading="lazy">'
             "</button>"
-            f"<figcaption>{meta}"
-            + (f"<span>{_e(work.caption)}</span>" if work.caption else "")
-            + "</figcaption></figure>"
+            + (
+                # A photo with nothing to say under it gets no caption box,
+                # or the card shows a blank strip below the image.
+                f"<figcaption>{meta}"
+                + (f"<span>{_e(work.caption)}</span>" if work.caption else "")
+                + "</figcaption>"
+                if meta or work.caption
+                else ""
+            )
+            + "</figure>"
         )
 
     links = "".join(
