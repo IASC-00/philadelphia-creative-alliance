@@ -1,44 +1,6 @@
 {
   "_meta": {
-    "generated": "2026-11-13"
-  },
-  "jeilah/band.webp": {
-    "height": 220,
-    "sha256": "6b6c62b0cdadd4b28a37de0f75a80b9d7e9158f49fbe50a1f48a6139fcac6b74",
-    "width": 2400
-  },
-  "jeilah/index.html": {
-    "sha256": "1926a4f92853030932c42660726f264a1b785e6b203d56a0b42e8d788bc5e89e"
-  },
-  "jeilah/jeilah-gallery-16.webp": {
-    "height": 800,
-    "sha256": "27a1e5881b734e59ef45ca0dab0e135821b0eca477daec75d2de9cd58282c324",
-    "width": 533
-  },
-  "jeilah/jeilah-gallery-30.webp": {
-    "height": 800,
-    "sha256": "7c6dc90041e1674f0f83357c1adeefc18e044f281285a8eb0b0645481ecfaf54",
-    "width": 533
-  },
-  "jeilah/jeilah-home-hero.webp": {
-    "height": 864,
-    "sha256": "d4d5ddc9295e61cb2e69e6d9d2d8567e88de85ffd6fe37feabf6217a3e5a393a",
-    "width": 1600
-  },
-  "jeilah/jeilah-music-hero.webp": {
-    "height": 857,
-    "sha256": "235ba524e4ab2308821dd1197901e02317e720e65c44ded5c2f559e5b953040e",
-    "width": 1600
-  },
-  "jeilah/wall-tall.webp": {
-    "height": 1500,
-    "sha256": "2dc29b5a8359bd62451637b422196000eadadd895860b2f43cb5a8cd8fb558b4",
-    "width": 1100
-  },
-  "jeilah/wall-wide.webp": {
-    "height": 1000,
-    "sha256": "df42881880442728b86d99f9619bcd07dbaa71c8e640cf4afce95dfb655e03cd",
-    "width": 2400
+    "generated": "2026-11-16"
   },
   "major-key/band.webp": {
     "height": 220,
